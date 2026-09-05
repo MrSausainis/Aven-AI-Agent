@@ -134,6 +134,21 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// Everything below is wrapped in one try/catch. Before this, any error
+// during setup (the CDN library failing to load, a typo'd element id, a
+// bad key format, anything) failed completely silently - which is exactly
+// what "the button doesn't even respond" was: the script died partway
+// through attaching the click handlers, so most of them were simply never
+// attached at all, with nothing on screen to say so. Now any such failure
+// shows a visible red banner with the real error message instead.
+try {
+
+if (typeof supabase === "undefined") {
+  throw new Error("The Supabase library itself never loaded - check your " +
+    "internet connection, or an ad blocker / privacy extension may be " +
+    "blocking cdn.jsdelivr.net.");
+}
+
 // ============================================================================
 // Fill these in from Supabase: Settings -> API -> Project URL / anon public key.
 // Safe to have these visible in page source - the anon key has no power on
@@ -141,7 +156,7 @@
 // what any given request can read or write.
 // ============================================================================
 const SUPABASE_URL = "https://upiadmvxzphegivqszvp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVwaWFkbXZ4enBoZWdpdnFzenZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1OTM2ODAsImV4cCI6MjEwNDE2OTY4MH0.hqFFXHLS6NIltYBJVKFlJAe7mOoLH0GIvWsc8gx2afg";
+const SUPABASE_ANON_KEY = "sb_publishable_iS9do7OPQuY-zEeAFfSrWQ_zA_IAObI";
 
 const DOWNLOAD_URL = "https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe";
 
@@ -301,6 +316,17 @@ async function refreshSession(){
 // Check for an existing session on page load (Supabase persists it in
 // localStorage by default, so a refresh doesn't log the user out).
 refreshSession();
+
+} catch (fatalError) {
+  const banner = document.createElement("div");
+  banner.style.cssText = "position:fixed;top:0;left:0;right:0;background:#3a1414;" +
+    "color:#ffb0a0;padding:14px 20px;font-family:sans-serif;font-size:14px;" +
+    "z-index:9999;border-bottom:2px solid #ff8a80;";
+  banner.textContent = "This page failed to start: " + fatalError.message +
+    " (press F12, open the Console tab, and send a screenshot of any red text there)";
+  document.body.prepend(banner);
+  console.error("A.V.E.N. account.html fatal init error:", fatalError);
+}
 </script>
 </body>
 </html>
