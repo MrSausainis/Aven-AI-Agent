@@ -510,6 +510,24 @@ async function refreshSession(){
     return;
   }
 
+  // ---- hand off to AVEN, if it's the one that sent us here ----
+  // A real top-level page redirect, NOT a background fetch(). Chrome/Edge's
+  // Private Network Access restricts a public HTTPS page's SUBRESOURCE
+  // requests (fetch, XHR, ...) to localhost, but does not restrict a full
+  // navigation - see aven_auth.py's module docstring for the sourcing on
+  // this. A fetch() here would silently fail on current Chrome versions for
+  // a lot of users; this redirect does not have that problem.
+  const params = new URLSearchParams(window.location.search);
+  const desktopCallback = params.get("desktop_callback");
+  if (desktopCallback) {
+    const target = new URL(desktopCallback);
+    target.searchParams.set("access_token", session.access_token);
+    target.searchParams.set("refresh_token", session.refresh_token);
+    target.searchParams.set("account_name", profile.account_name);
+    window.location.href = target.toString();
+    return;
+  }
+
   showWrap("dash");
   el("dashName").textContent = profile.account_name;
   el("dashAvatar").textContent = profile.account_name.charAt(0).toUpperCase();
