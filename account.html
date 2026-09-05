@@ -140,8 +140,8 @@
 // its own, the RLS policies in aven_schema.sql are what actually restrict
 // what any given request can read or write.
 // ============================================================================
-const SUPABASE_URL = "https://upiadmvxzphegivqszvp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVwaWFkbXZ4enBoZWdpdnFzenZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1OTM2ODAsImV4cCI6MjEwNDE2OTY4MH0.hqFFXHLS6NIltYBJVKFlJAe7mOoLH0GIvWsc8gx2afg";
+const SUPABASE_URL = "PUT-YOUR-PROJECT-URL-HERE";
+const SUPABASE_ANON_KEY = "PUT-YOUR-ANON-PUBLIC-KEY-HERE";
 
 const DOWNLOAD_URL = "https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe";
 
@@ -194,14 +194,19 @@ el("su_submit").onclick = async () => {
     return;
   }
 
+  // Button stays disabled through the WHOLE attempt now, re-enabled only on
+  // error (so the user can fix something and retry) - not unconditionally
+  // right after the request resolves. That "resolved" moment used to
+  // include the success case where nothing visible had happened yet
+  // (see below), which is exactly what made it look spammable.
   setBusy(el("su_submit"), true);
   const { data, error } = await supa.auth.signUp({
     email, password,
     options: { data: { account_name } },
   });
-  setBusy(el("su_submit"), false, "Create account");
 
   if (error) {
+    setBusy(el("su_submit"), false, "Create account");
     // VERIFICATION NOTE: the exact wording Supabase returns when the
     // handle_new_user trigger fails (e.g. account_name already taken via
     // the UNIQUE constraint) can vary by Supabase version - this checks
@@ -215,8 +220,22 @@ el("su_submit").onclick = async () => {
     }
     return;
   }
-  showMsg("authMsg", "Account created. Loading your dashboard...", "ok");
-  await refreshSession();
+
+  // THE ACTUAL BUG: Supabase's default project settings require email
+  // confirmation before a session exists. signUp() still succeeds (the
+  // account IS created, exactly as the Table Editor screenshot showed),
+  // but data.session is null until the confirmation link is clicked -
+  // there is no session for refreshSession() to find, so it silently did
+  // nothing forever. Branch on whether a session actually came back,
+  // instead of assuming one always will.
+  if (data.session) {
+    await refreshSession();
+  } else {
+    setBusy(el("su_submit"), true, "Check your email");
+    showMsg("authMsg",
+      "Account created. Check " + email + " for a confirmation link, " +
+      "then log in above.", "ok");
+  }
 };
 
 // ---- log in ----
@@ -230,9 +249,17 @@ el("li_submit").onclick = async () => {
   }
   setBusy(el("li_submit"), true);
   const { error } = await supa.auth.signInWithPassword({ email, password });
-  setBusy(el("li_submit"), false, "Log in");
   if (error) {
-    showMsg("authMsg", "Couldn't log in - check your email and password.", "error");
+    setBusy(el("li_submit"), false, "Log in");
+    // "wrong password" would be actively misleading for someone who just
+    // hasn't confirmed their email yet - same root cause as the signup
+    // fix above, different entry point.
+    const msg = (error.message || "").toLowerCase();
+    if (msg.includes("confirm")) {
+      showMsg("authMsg", "Confirm your email first - check your inbox for the link.", "error");
+    } else {
+      showMsg("authMsg", "Couldn't log in - check your email and password.", "error");
+    }
     return;
   }
   await refreshSession();
