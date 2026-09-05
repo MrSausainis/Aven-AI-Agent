@@ -14,12 +14,10 @@
     --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   }
   *{ box-sizing: border-box; }
+  html, body{ height: 100%; }
   body{
     margin: 0; min-height: 100vh; color: var(--text);
-    font-family: var(--sans); display: flex; flex-direction: column; align-items: center;
-    /* A soft glow from the top, echoing the Island's own glow language on
-       index.html, so this page doesn't read as a bare utility screen
-       bolted onto the rest of the site. */
+    font-family: var(--sans); display: flex; flex-direction: column;
     background:
       radial-gradient(ellipse 900px 520px at 50% -10%, rgba(0,207,255,0.09), transparent 60%),
       radial-gradient(ellipse 700px 400px at 100% 100%, rgba(181,123,255,0.05), transparent 60%),
@@ -31,19 +29,49 @@
     width: 100%; padding: 18px 32px; border-bottom: 1px solid var(--border-soft);
     background: rgba(10,18,22,0.7); backdrop-filter: blur(6px);
     display: flex; justify-content: space-between; align-items: center;
+    flex: none;
   }
   .brand{ font-weight: 700; font-size: 1.05rem; color: var(--cyan-bright); text-decoration: none; }
 
-  .wrap{ width: 100%; max-width: 400px; padding: 60px 20px; }
+  /* ---- centered-card layout: sign up / log in / broken-account states ---- */
+  .center-wrap{ width: 100%; max-width: 400px; margin: 0 auto; padding: 60px 20px; flex: 1; }
   .card{
     background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
     padding: 28px 24px;
     box-shadow: 0 30px 60px -20px rgba(0,0,0,0.5);
   }
+
+  /* ---- full dashboard layout: sidebar + content, once logged in ---- */
+  .dash-shell{ display: flex; flex: 1; width: 100%; max-width: 1000px; margin: 0 auto; }
+  .dash-sidebar{
+    width: 220px; flex: none; padding: 32px 16px;
+    border-right: 1px solid var(--border-soft);
+    display: flex; flex-direction: column;
+  }
+  .dash-avatar{
+    width: 52px; height: 52px; border-radius: 50%; background: var(--bg-raised);
+    border: 1px solid var(--border); color: var(--cyan-bright);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: 700; margin: 0 auto 10px;
+  }
+  .dash-account-name{ text-align: center; font-size: 0.9rem; color: var(--text-dim); margin-bottom: 28px; word-break: break-word; }
+  .dash-nav{ display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .dash-nav-item{
+    padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; color: var(--text-dim);
+    cursor: pointer; user-select: none;
+  }
+  .dash-nav-item:hover{ background: var(--bg-raised); color: var(--text); }
+  .dash-nav-item.active{ background: rgba(0,207,255,0.12); color: var(--cyan-bright); font-weight: 600; }
+
+  .dash-main{ flex: 1; padding: 40px 44px; max-width: 560px; }
+  .dash-section{ display: none; }
+  .dash-section.active{ display: block; }
+  .dash-main h1{ font-size: 1.4rem; font-weight: 600; margin: 0 0 22px; }
+
   h1{ font-size: 1.3rem; font-weight: 600; margin: 0 0 4px; }
   h2.section-title{
     font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
-    color: var(--text-faint); margin: 26px 0 12px; font-weight: 600;
+    color: var(--text-faint); margin: 0 0 12px; font-weight: 600;
   }
   .sub{ color: var(--text-dim); font-size: 0.9rem; margin: 0 0 22px; }
 
@@ -62,21 +90,20 @@
   input:focus{ outline: 2px solid var(--cyan); outline-offset: 1px; }
 
   button.primary{
-    width: 100%; margin-top: 20px; padding: 12px 0; border-radius: 10px; border: none;
+    padding: 12px 22px; border-radius: 10px; border: none;
     background: var(--cyan); color: #04141a; font-weight: 600; font-size: 0.95rem; cursor: pointer;
   }
+  button.primary.block{ width: 100%; margin-top: 20px; }
   button.primary:hover{ background: var(--cyan-bright); }
   button.primary:disabled{ opacity: 0.5; cursor: default; }
   button.ghost{
-    width: 100%; margin-top: 10px; padding: 11px 0; border-radius: 10px;
+    padding: 11px 22px; border-radius: 10px;
     background: transparent; border: 1px solid var(--border); color: var(--text);
     font-size: 0.9rem; cursor: pointer;
   }
+  button.ghost.block{ width: 100%; margin-top: 10px; }
   button.ghost:hover{ border-color: var(--cyan); }
   button.ghost:disabled{ opacity: 0.5; cursor: default; }
-  button.small{
-    width: auto; margin-top: 0; padding: 9px 16px; font-size: 0.85rem;
-  }
   .row{ display: flex; gap: 8px; align-items: flex-start; }
   .row input{ flex: 1; }
 
@@ -85,11 +112,23 @@
   .msg.ok{ background: rgba(127,233,160,0.1); color: var(--green); border: 1px solid rgba(127,233,160,0.3); }
   .msg.warn{ background: rgba(255,207,122,0.1); color: var(--amber); border: 1px solid rgba(255,207,122,0.3); }
 
-  .kv{ display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border-soft); font-size: 0.9rem; }
+  .kv{ display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--border-soft); font-size: 0.92rem; }
   .kv:first-of-type{ border-top: none; }
   .kv span:first-child{ color: var(--text-faint); }
 
   .hidden{ display: none !important; }
+
+  @media (max-width: 720px){
+    .dash-shell{ flex-direction: column; }
+    .dash-sidebar{
+      width: 100%; border-right: none; border-bottom: 1px solid var(--border-soft);
+      flex-direction: row; align-items: center; padding: 16px 20px; gap: 16px;
+    }
+    .dash-avatar{ margin: 0; width: 40px; height: 40px; font-size: 1rem; }
+    .dash-account-name{ margin: 0; text-align: left; }
+    .dash-nav{ flex-direction: row; }
+    .dash-main{ padding: 28px 20px; max-width: none; }
+  }
 </style>
 </head>
 <body>
@@ -99,82 +138,97 @@
   <a href="index.html" style="color:var(--text-faint); font-size:0.85rem; text-decoration:none;">&larr; back</a>
 </div>
 
-<div class="wrap">
-  <div class="card">
+<!-- ============ LOGGED OUT: sign up / log in ============ -->
+<div class="center-wrap" id="authWrap">
+  <div class="card" id="authView">
+    <h1>Your account</h1>
+    <p class="sub">Create an account, or log back in.</p>
 
-    <!-- ============ LOGGED OUT: sign up / log in ============ -->
-    <div id="authView">
-      <h1>Your account</h1>
-      <p class="sub">Create an account, or log back in.</p>
-
-      <div class="tabs">
-        <div class="tab active" id="tabSignup">Sign up</div>
-        <div class="tab" id="tabLogin">Log in</div>
-      </div>
-
-      <div id="signupForm">
-        <label for="su_name">Account name</label>
-        <input id="su_name" type="text" autocomplete="username" placeholder="e.g. shadowfox">
-        <label for="su_email">Email</label>
-        <input id="su_email" type="email" autocomplete="email" placeholder="you@example.com">
-        <label for="su_pass">Password</label>
-        <input id="su_pass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
-        <button class="primary" id="su_submit">Create account</button>
-        <button class="ghost hidden" id="su_resend">Resend confirmation email</button>
-      </div>
-
-      <div id="loginForm" class="hidden">
-        <label for="li_email">Email</label>
-        <input id="li_email" type="email" autocomplete="email" placeholder="you@example.com">
-        <label for="li_pass">Password</label>
-        <input id="li_pass" type="password" autocomplete="current-password" placeholder="Your password">
-        <button class="primary" id="li_submit">Log in</button>
-      </div>
-
-      <div class="msg" id="authMsg"></div>
+    <div class="tabs">
+      <div class="tab active" id="tabSignup">Sign up</div>
+      <div class="tab" id="tabLogin">Log in</div>
     </div>
 
-    <!-- ============ LOGGED IN: dashboard ============ -->
-    <div id="dashView" class="hidden">
-      <h1>Welcome back</h1>
-      <p class="sub" id="dashName"></p>
+    <div id="signupForm">
+      <label for="su_name">Account name</label>
+      <input id="su_name" type="text" autocomplete="username" placeholder="e.g. shadowfox">
+      <label for="su_email">Email</label>
+      <input id="su_email" type="email" autocomplete="email" placeholder="you@example.com">
+      <label for="su_pass">Password</label>
+      <input id="su_pass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+      <button class="primary block" id="su_submit">Create account</button>
+      <button class="ghost block hidden" id="su_resend">Resend confirmation email</button>
+    </div>
 
+    <div id="loginForm" class="hidden">
+      <label for="li_email">Email</label>
+      <input id="li_email" type="email" autocomplete="email" placeholder="you@example.com">
+      <label for="li_pass">Password</label>
+      <input id="li_pass" type="password" autocomplete="current-password" placeholder="Your password">
+      <button class="primary block" id="li_submit">Log in</button>
+    </div>
+
+    <div class="msg" id="authMsg"></div>
+  </div>
+</div>
+
+<!-- ============ LOGGED IN, BUT NO PROFILE/ENTITLEMENT ROW ============ -->
+<div class="center-wrap hidden" id="brokenWrap">
+  <div class="card" id="brokenView">
+    <h1>Account data missing</h1>
+    <p class="sub">
+      You're logged in, but this account has no profile or subscription
+      data attached to it. This usually means it was deleted directly
+      from a database table rather than removed as a login.
+    </p>
+    <div class="msg warn" style="display:block;">
+      To clean this up: log out, then in the Supabase dashboard go to
+      <strong>Authentication &rarr; Users</strong> (not Table Editor) and
+      delete this user from there - that removes it properly. Then sign
+      up again with a fresh email.
+    </div>
+    <button class="ghost block" id="brokenLogoutBtn" style="margin-top:16px;">Log out</button>
+  </div>
+</div>
+
+<!-- ============ LOGGED IN: real dashboard, sidebar + sections ============ -->
+<div class="dash-shell hidden" id="dashShell">
+  <aside class="dash-sidebar">
+    <div class="dash-avatar" id="dashAvatar">?</div>
+    <div class="dash-account-name" id="dashName">&ndash;</div>
+    <nav class="dash-nav">
+      <div class="dash-nav-item active" data-section="overview">Overview</div>
+      <div class="dash-nav-item" data-section="subscription">Subscription</div>
+      <div class="dash-nav-item" data-section="settings">Settings</div>
+    </nav>
+    <button class="ghost" id="logoutBtn">Log out</button>
+  </aside>
+
+  <main class="dash-main">
+    <section class="dash-section active" id="section-overview">
+      <h1>Overview</h1>
+      <p class="sub">Everything you need to get A.V.E.N. running.</p>
+      <button class="primary block" id="downloadBtn">Download for Windows</button>
+      <div class="msg" id="dashMsg"></div>
+    </section>
+
+    <section class="dash-section" id="section-subscription">
+      <h1>Subscription</h1>
       <div class="kv"><span>Tier</span><span id="dashTier">&ndash;</span></div>
       <div class="kv"><span>Status</span><span id="dashSource">&ndash;</span></div>
+      <button class="ghost block" id="upgradeBtn" style="margin-top:20px;">Upgrade (coming soon)</button>
+    </section>
 
-      <button class="primary" id="downloadBtn">Download for Windows</button>
-      <button class="ghost" id="upgradeBtn">Upgrade (coming soon)</button>
-
-      <h2 class="section-title">Settings</h2>
+    <section class="dash-section" id="section-settings">
+      <h1>Settings</h1>
       <label for="settingsName">Account name</label>
       <div class="row">
         <input id="settingsName" type="text">
-        <button class="primary small" id="settingsSave">Save</button>
+        <button class="primary" id="settingsSave">Save</button>
       </div>
       <div class="msg" id="settingsMsg"></div>
-
-      <button class="ghost" id="logoutBtn" style="margin-top:26px;">Log out</button>
-      <div class="msg" id="dashMsg"></div>
-    </div>
-
-    <!-- ============ LOGGED IN, BUT NO PROFILE/ENTITLEMENT ROW ============ -->
-    <div id="brokenView" class="hidden">
-      <h1>Account data missing</h1>
-      <p class="sub">
-        You're logged in, but this account has no profile or subscription
-        data attached to it. This usually means it was deleted directly
-        from a database table rather than removed as a login.
-      </p>
-      <div class="msg warn" style="display:block;">
-        To clean this up: log out, then in the Supabase dashboard go to
-        <strong>Authentication &rarr; Users</strong> (not Table Editor) and
-        delete this user from there - that removes it properly. Then sign
-        up again with a fresh email.
-      </div>
-      <button class="ghost" id="brokenLogoutBtn" style="margin-top:16px;">Log out</button>
-    </div>
-
-  </div>
+    </section>
+  </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -207,7 +261,27 @@ function setBusy(btn, busy, label){
   if (label !== undefined) btn.textContent = label;
 }
 
-// ---- tab switching ----
+// Swaps which of the three top-level wraps is visible - the auth card, the
+// broken-account card, or the real dashboard shell. Kept in one place so
+// every caller (login, signup, logout, broken-account) goes through the
+// same switch instead of three different pieces of code half-managing it.
+function showWrap(which){
+  el("authWrap").classList.toggle("hidden", which !== "auth");
+  el("brokenWrap").classList.toggle("hidden", which !== "broken");
+  el("dashShell").classList.toggle("hidden", which !== "dash");
+}
+
+// ---- dashboard sidebar navigation ----
+document.querySelectorAll(".dash-nav-item").forEach((item) => {
+  item.onclick = () => {
+    document.querySelectorAll(".dash-nav-item").forEach((i) => i.classList.remove("active"));
+    document.querySelectorAll(".dash-section").forEach((s) => s.classList.remove("active"));
+    item.classList.add("active");
+    el("section-" + item.dataset.section).classList.add("active");
+  };
+});
+
+// ---- tab switching (signup/login) ----
 el("tabSignup").onclick = () => {
   el("tabSignup").classList.add("active");
   el("tabLogin").classList.remove("active");
@@ -334,12 +408,10 @@ el("li_submit").onclick = async () => {
   await refreshSession();
 };
 
-// ---- log out (both buttons - the normal dashboard and the broken-account view) ----
+// ---- log out ----
 async function doLogout(){
   await supa.auth.signOut();
-  el("dashView").classList.add("hidden");
-  el("brokenView").classList.add("hidden");
-  el("authView").classList.remove("hidden");
+  showWrap("auth");
 }
 el("logoutBtn").onclick = doLogout;
 el("brokenLogoutBtn").onclick = doLogout;
@@ -372,7 +444,8 @@ el("settingsSave").onclick = async () => {
     return;
   }
   showMsg("settingsMsg", "Saved.", "ok");
-  el("dashName").textContent = "Signed in as " + newName;
+  el("dashName").textContent = newName;
+  el("dashAvatar").textContent = newName.charAt(0).toUpperCase();
 };
 
 // ---- load the logged-in dashboard ----
@@ -384,22 +457,19 @@ async function refreshSession(){
   const { data: profile } = await supa.from("profiles").select("account_name").eq("id", uid).maybeSingle();
   const { data: entitlement } = await supa.from("entitlements").select("tier_id, tier_source").eq("id", uid).maybeSingle();
 
-  el("authView").classList.add("hidden");
-
   // A logged-in session with no profile/entitlement row is exactly the
   // "manually deleted from Table Editor instead of Authentication -> Users"
   // scenario - show a clear explanation instead of silently displaying
-  // blank/undefined fields or throwing on the .single() call this used to
-  // use (which errors on zero rows; maybeSingle() returns null instead).
+  // blank/undefined fields or throwing on a .single() call (which errors on
+  // zero rows; maybeSingle() returns null instead).
   if (!profile || !entitlement) {
-    el("dashView").classList.add("hidden");
-    el("brokenView").classList.remove("hidden");
+    showWrap("broken");
     return;
   }
 
-  el("brokenView").classList.add("hidden");
-  el("dashView").classList.remove("hidden");
-  el("dashName").textContent = "Signed in as " + profile.account_name;
+  showWrap("dash");
+  el("dashName").textContent = profile.account_name;
+  el("dashAvatar").textContent = profile.account_name.charAt(0).toUpperCase();
   el("dashTier").textContent = entitlement.tier_id;
   el("dashSource").textContent = entitlement.tier_source === "manual" ? "Manually granted" :
                                   entitlement.tier_source === "stripe" ? "Paid subscription" : "Free signup";
