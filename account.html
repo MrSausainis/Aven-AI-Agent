@@ -166,6 +166,24 @@
       <label for="li_pass">Password</label>
       <input id="li_pass" type="password" autocomplete="current-password" placeholder="Your password">
       <button class="primary block" id="li_submit">Log in</button>
+      <a href="#" id="forgotLink" style="display:block; text-align:center; margin-top:14px; font-size:0.85rem;">Forgot your password?</a>
+    </div>
+
+    <!-- ============ PASSWORD RESET REQUEST ============ -->
+    <div id="forgotForm" class="hidden">
+      <label for="forgot_email">Email</label>
+      <input id="forgot_email" type="email" autocomplete="email" placeholder="you@example.com">
+      <button class="primary block" id="forgot_submit">Send reset link</button>
+      <a href="#" id="backToLoginLink" style="display:block; text-align:center; margin-top:14px; font-size:0.85rem;">Back to log in</a>
+    </div>
+
+    <!-- ============ SET NEW PASSWORD (after clicking the emailed link) ============ -->
+    <div id="recoveryForm" class="hidden">
+      <h1>Set a new password</h1>
+      <p class="sub">You followed a password reset link - pick a new password below.</p>
+      <label for="recovery_pass">New password</label>
+      <input id="recovery_pass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+      <button class="primary block" id="recovery_submit">Set new password</button>
     </div>
 
     <div class="msg" id="authMsg"></div>
@@ -296,6 +314,7 @@ el("tabSignup").onclick = () => {
   el("tabLogin").classList.remove("active");
   el("signupForm").classList.remove("hidden");
   el("loginForm").classList.add("hidden");
+  el("forgotForm").classList.add("hidden");
   hideMsg("authMsg");
 };
 el("tabLogin").onclick = () => {
@@ -303,8 +322,80 @@ el("tabLogin").onclick = () => {
   el("tabSignup").classList.remove("active");
   el("loginForm").classList.remove("hidden");
   el("signupForm").classList.add("hidden");
+  el("forgotForm").classList.add("hidden");
   hideMsg("authMsg");
 };
+
+// ---- forgot password: request link, then set a new one after following it ----
+el("forgotLink").onclick = (e) => {
+  e.preventDefault();
+  hideMsg("authMsg");
+  el("loginForm").classList.add("hidden");
+  el("forgotForm").classList.remove("hidden");
+  el("forgot_email").value = el("li_email").value;
+};
+el("backToLoginLink").onclick = (e) => {
+  e.preventDefault();
+  hideMsg("authMsg");
+  el("forgotForm").classList.add("hidden");
+  el("loginForm").classList.remove("hidden");
+};
+el("forgot_submit").onclick = async () => {
+  hideMsg("authMsg");
+  const email = el("forgot_email").value.trim();
+  if (!email) {
+    showMsg("authMsg", "Enter your email first.", "error");
+    return;
+  }
+  setBusy(el("forgot_submit"), true, "Sending...");
+  const { error } = await supa.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+  setBusy(el("forgot_submit"), false, "Send reset link");
+  if (error) {
+    showMsg("authMsg", error.message, "error");
+    return;
+  }
+  showMsg("authMsg", "If that email has an account, a reset link is on its way. Check spam too.", "ok");
+};
+el("recovery_submit").onclick = async () => {
+  hideMsg("authMsg");
+  const pass = el("recovery_pass").value;
+  if (!pass || pass.length < 6) {
+    showMsg("authMsg", "Password needs to be at least 6 characters.", "error");
+    return;
+  }
+  setBusy(el("recovery_submit"), true, "...");
+  const { error } = await supa.auth.updateUser({ password: pass });
+  setBusy(el("recovery_submit"), false, "Set new password");
+  if (error) {
+    showMsg("authMsg", error.message, "error");
+    return;
+  }
+  showWrap("auth");
+  el("recoveryForm").classList.add("hidden");
+  el("loginForm").classList.remove("hidden");
+  el("tabLogin").classList.add("active");
+  el("tabSignup").classList.remove("active");
+  el("signupForm").classList.add("hidden");
+  showMsg("authMsg", "Password updated - you're logged in.", "ok");
+  await refreshSession();
+};
+
+// Supabase fires this when the URL carries a password-recovery token (i.e.
+// the user just clicked the emailed reset link) - show the "set a new
+// password" form instead of the normal login card. This is a real, live
+// session (recovery links log you in temporarily to allow the change), so
+// refreshSession() after setting the new password works normally.
+supa.auth.onAuthStateChange((event) => {
+  if (event === "PASSWORD_RECOVERY") {
+    showWrap("auth");
+    el("loginForm").classList.add("hidden");
+    el("signupForm").classList.add("hidden");
+    el("forgotForm").classList.add("hidden");
+    el("recoveryForm").classList.remove("hidden");
+  }
+});
 
 // ---- resend confirmation, with a 30s cooldown so it can't be hammered
 // into hitting Supabase's own email rate limit even faster ----
