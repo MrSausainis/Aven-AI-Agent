@@ -70,6 +70,21 @@
     font-size: 0.72rem;
     color: var(--text-faint);
   }
+  .topbar-right{
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .signin-link{
+    font-size: 0.82rem;
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .signin-link:hover{ border-color: var(--cyan); color: var(--cyan-bright); }
   .status{
     display: flex;
     align-items: center;
@@ -308,7 +323,10 @@
       <span class="brand-mark">A.V.E.N.</span>
       <span class="brand-sub">v1.2.1 · GUARDIAN OS</span>
     </div>
-    <div class="status"><span class="status-dot"></span>ONLINE</div>
+    <div class="topbar-right">
+      <a class="signin-link" href="account.html">Sign In</a>
+      <div class="status"><span class="status-dot"></span>ONLINE</div>
+    </div>
   </div>
 
   <section class="hero">
@@ -328,7 +346,7 @@
     </p>
 
     <div class="cta-row">
-      <a class="btn btn-primary" href="account.html">
+      <a class="btn btn-primary" href="https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe">
         Download for Windows
       </a>
       <a class="btn btn-ghost" href="#what-it-does">See what it does</a>
@@ -383,7 +401,7 @@
     <h2>Get it running</h2>
     <p>One installer. It sets itself up.</p>
     <div class="cta-row">
-      <a class="btn btn-primary" href="account.html">
+      <a class="btn btn-primary" href="https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe">
         Download A.V.E.N.
       </a>
     </div>
