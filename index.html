@@ -1,1 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A.V.E.N. — a desktop assistant that lives on your screen, not in a tab</title>
+<meta name="description" content="A.V.E.N. is a Windows desktop AI assistant: a Dynamic Island-style overlay, voice control, and in-game widgets. Download and run — no Python required." />
+<style>
+  :root{
+    /* Lifted directly from the real app's "Holographic E.V.A." theme
+       (aven_main.py THEMES / aven_ui.py THEME_PALETTE) - this page borrows
+       the product's own established palette rather than inventing one. */
+    --bg: #04080a;
+    --bg-raised: #0a1216;
+    --bg-card: #0e161a;
+    --border: #183038;
+    --border-soft: #0f2028;
+    --cyan: #00cfff;
+    --cyan-bright: #00ffff;
+    --text: #eaf9ff;
+    --text-dim: #8fb4bf;
+    --text-faint: #5a7480;
+    --mono: ui-monospace, "Consolas", "SFMono-Regular", Menlo, monospace;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
 
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+  body{
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a{ color: var(--cyan); }
+  a:focus-visible, button:focus-visible{
+    outline: 2px solid var(--cyan);
+    outline-offset: 3px;
+  }
+
+  /* ---------------------------------------------------------------
+     Header - mirrors the real app's own header bar: wordmark, version,
+     a live-feeling status pill. This is copied structure from the actual
+     product chrome (see aven_main.py's header), not decorative template
+     chrome invented for the page.
+  --------------------------------------------------------------- */
+  .topbar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--bg-raised);
+  }
+  .brand{
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .brand-mark{
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+    color: var(--cyan-bright);
+  }
+  .brand-sub{
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-faint);
+  }
+  .status{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: #7fe9a0;
+  }
+  .status-dot{
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #4ee08a;
+    box-shadow: 0 0 8px 1px rgba(78,224,138,0.7);
+    margin-right: 7px;
+  }
+
+  /* ---------------------------------------------------------------
+     Hero - the Island itself is the hero image. It's the single most
+     characteristic object in this product's world, so it IS the opening
+     visual rather than a generic headline-plus-gradient block.
+  --------------------------------------------------------------- */
+  .hero{
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 96px 24px 64px;
+    text-align: center;
+  }
+
+  .island{
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(180deg, #0d171b, #0a1216);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 10px 22px 10px 16px;
+    box-shadow: 0 0 40px -10px rgba(0,207,255,0.25);
+  }
+  .island-dot{
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 14px 3px rgba(0,207,255,0.55);
+    animation: breathe 3.4s ease-in-out infinite;
+    flex: none;
+  }
+  .island-bars{
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 16px;
+  }
+  .island-bars span{
+    width: 3px;
+    border-radius: 2px;
+    background: var(--cyan);
+    opacity: 0.85;
+    animation: bar 1.1s ease-in-out infinite;
+  }
+  .island-bars span:nth-child(1){ height: 40%; animation-delay: 0s; }
+  .island-bars span:nth-child(2){ height: 90%; animation-delay: 0.1s; }
+  .island-bars span:nth-child(3){ height: 60%; animation-delay: 0.2s; }
+  .island-bars span:nth-child(4){ height: 100%; animation-delay: 0.3s; }
+  .island-bars span:nth-child(5){ height: 55%; animation-delay: 0.4s; }
+  .island-text{
+    font-size: 0.85rem;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .island-time{
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text-faint);
+    padding-left: 8px;
+    margin-left: 6px;
+    border-left: 1px solid var(--border);
+  }
+
+  @keyframes breathe{
+    0%, 100%{ opacity: 0.55; transform: scale(0.86); }
+    50%{ opacity: 1; transform: scale(1); }
+  }
+  @keyframes bar{
+    0%, 100%{ transform: scaleY(0.5); }
+    50%{ transform: scaleY(1); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .island-dot, .island-bars span{ animation: none; }
+  }
+
+  .hero h1{
+    margin: 40px 0 18px;
+    font-size: clamp(2.1rem, 4.2vw, 3.1rem);
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .hero p.lede{
+    max-width: 560px;
+    margin: 0 auto;
+    color: var(--text-dim);
+    font-size: 1.05rem;
+  }
+
+  .cta-row{
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 36px;
+    flex-wrap: wrap;
+  }
+  .btn{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 26px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .btn:hover{ transform: translateY(-1px); }
+  .btn-primary{
+    background: var(--cyan);
+    color: #04141a;
+  }
+  .btn-primary:hover{ background: var(--cyan-bright); }
+  .btn-ghost{
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text);
+  }
+  .btn-ghost:hover{ border-color: var(--cyan); }
+  .fineprint{
+    margin-top: 14px;
+    font-size: 0.8rem;
+    color: var(--text-faint);
+  }
+
+  /* ---------------------------------------------------------------
+     What it does - an asymmetric left-bordered list, not identical
+     rounded cards with a shared drop shadow. Each row's number is real
+     sequence information (these ARE steps of "what you get"), not a
+     decorative 01/02/03 label.
+  --------------------------------------------------------------- */
+  .section{
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 24px;
+  }
+  .section-label{
+    font-size: 0.85rem;
+    color: var(--text-faint);
+    margin-bottom: 28px;
+  }
+  .feature{
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 18px;
+    padding: 22px 0;
+    border-top: 1px solid var(--border-soft);
+  }
+  .feature:last-child{ border-bottom: 1px solid var(--border-soft); }
+  .feature-glyph{
+    font-size: 1.4rem;
+    color: var(--cyan);
+    line-height: 1.6;
+  }
+  .feature h3{
+    margin: 0 0 6px;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .feature p{
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.94rem;
+    max-width: 52ch;
+  }
+
+  /* ---------------------------------------------------------------
+     Download
+  --------------------------------------------------------------- */
+  .download{
+    text-align: center;
+    padding: 64px 24px 80px;
+  }
+  .download h2{
+    font-size: 1.7rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .download p{
+    color: var(--text-dim);
+    margin-bottom: 30px;
+  }
+  .requirements{
+    display: inline-flex;
+    gap: 22px;
+    margin-top: 28px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text-faint);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .requirements span{ margin: 0 11px; }
+
+  footer{
+    border-top: 1px solid var(--border-soft);
+    padding: 28px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-faint);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer a{ color: var(--text-faint); }
+  footer a:hover{ color: var(--cyan); }
+
+  @media (max-width: 560px){
+    .topbar{ padding: 14px 18px; }
+    .island{ padding: 8px 16px 8px 12px; }
+    .island-text{ display: none; }
+    .feature{ grid-template-columns: 32px 1fr; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-mark">A.V.E.N.</span>
+      <span class="brand-sub">v1.2.1 · GUARDIAN OS</span>
+    </div>
+    <div class="status"><span class="status-dot"></span>ONLINE</div>
+  </div>
+
+  <section class="hero">
+    <div class="island">
+      <span class="island-dot"></span>
+      <span class="island-bars"><span></span><span></span><span></span><span></span><span></span></span>
+      <span class="island-text">listening</span>
+      <span class="island-time">21:32</span>
+    </div>
+
+    <h1>An assistant that sits on your screen, not inside a browser tab.</h1>
+    <p class="lede">
+      A.V.E.N. is a Windows desktop assistant: a small always-on overlay for
+      voice, timers, and game widgets, plus a full chat window when you need
+      one. Download the installer and it runs — no Python, no setup beyond
+      that.
+    </p>
+
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/YOUR-USERNAME/YOUR-REPO/releases/latest/download/AVEN-Setup.exe">
+        Download for Windows
+      </a>
+      <a class="btn btn-ghost" href="#what-it-does">See what it does</a>
+    </div>
+    <p class="fineprint">Windows 10/11 · free · no account required to try it</p>
+  </section>
+
+  <section class="section" id="what-it-does">
+    <p class="section-label">What's actually in it</p>
+
+    <div class="feature">
+      <div class="feature-glyph">◐</div>
+      <div>
+        <h3>An overlay that stays out of the way</h3>
+        <p>A small pill at the top of your screen shows what's playing, an
+          active timer, or that it's listening — and collapses back to a dot
+          the moment there's nothing to say.</p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-glyph">◔</div>
+      <div>
+        <h3>Voice, without a wake-word gimmick</h3>
+        <p>Say its name and talk. Runs in the cloud for speed, or fully
+          local on your own GPU if you'd rather nothing leave your machine.</p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-glyph">◑</div>
+      <div>
+        <h3>Widgets that show up only when relevant</h3>
+        <p>A CS2 match clock that appears only while the game is actually
+          focused, and a notes checklist you can star and glance at
+          mid-game — nothing permanent parked on your screen.</p>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-glyph">◕</div>
+      <div>
+        <h3>Themes that actually change how it feels</h3>
+        <p>Five palettes, each with its own animation character — some
+          calm and slow, some sharp and immediate — not just a repainted
+          accent color.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="download">
+    <h2>Get it running</h2>
+    <p>One installer. It sets itself up.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/YOUR-USERNAME/YOUR-REPO/releases/latest/download/AVEN-Setup.exe">
+        Download A.V.E.N.
+      </a>
+    </div>
+    <div class="requirements">
+      <span>WINDOWS 10/11</span>
+      <span>SSD RECOMMENDED</span>
+      <span>~[SIZE] FREE SPACE</span>
+    </div>
+  </section>
+
+  <footer>
+    <span>A.V.E.N.</span>
+    <a href="https://github.com/YOUR-USERNAME/YOUR-REPO/releases">All releases</a>
+  </footer>
+
+</body>
+</html>
