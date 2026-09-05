@@ -221,12 +221,21 @@
 
     <section class="dash-section" id="section-settings">
       <h1>Settings</h1>
-      <label for="settingsName">Account name</label>
+
+      <h2 class="section-title">Account name</h2>
       <div class="row">
         <input id="settingsName" type="text">
         <button class="primary" id="settingsSave">Save</button>
       </div>
       <div class="msg" id="settingsMsg"></div>
+
+      <h2 class="section-title" style="margin-top:32px;">Password</h2>
+      <label for="settingsNewPass">New password</label>
+      <input id="settingsNewPass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+      <label for="settingsNewPass2">Confirm new password</label>
+      <input id="settingsNewPass2" type="password" autocomplete="new-password" placeholder="Type it again">
+      <button class="primary block" id="settingsPassSave" style="margin-top:16px;">Change password</button>
+      <div class="msg" id="settingsPassMsg"></div>
     </section>
   </main>
 </div>
@@ -446,6 +455,40 @@ el("settingsSave").onclick = async () => {
   showMsg("settingsMsg", "Saved.", "ok");
   el("dashName").textContent = newName;
   el("dashAvatar").textContent = newName.charAt(0).toUpperCase();
+};
+
+// ---- settings: change password. Supabase's updateUser() only needs an
+// active session, not the old password - that's standard for this API
+// (the session itself already proves who you are), not a shortcut I took.
+el("settingsPassSave").onclick = async () => {
+  hideMsg("settingsPassMsg");
+  const pass1 = el("settingsNewPass").value;
+  const pass2 = el("settingsNewPass2").value;
+
+  if (!pass1 || !pass2) {
+    showMsg("settingsPassMsg", "Fill in both fields.", "error");
+    return;
+  }
+  if (pass1.length < 6) {
+    showMsg("settingsPassMsg", "Password needs to be at least 6 characters.", "error");
+    return;
+  }
+  if (pass1 !== pass2) {
+    showMsg("settingsPassMsg", "Passwords don't match.", "error");
+    return;
+  }
+
+  setBusy(el("settingsPassSave"), true, "...");
+  const { error } = await supa.auth.updateUser({ password: pass1 });
+  setBusy(el("settingsPassSave"), false, "Change password");
+
+  if (error) {
+    showMsg("settingsPassMsg", error.message, "error");
+    return;
+  }
+  el("settingsNewPass").value = "";
+  el("settingsNewPass2").value = "";
+  showMsg("settingsPassMsg", "Password changed.", "ok");
 };
 
 // ---- load the logged-in dashboard ----
