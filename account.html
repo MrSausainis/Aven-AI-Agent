@@ -10,27 +10,41 @@
     --border: #183038; --border-soft: #0f2028;
     --cyan: #00cfff; --cyan-bright: #00ffff;
     --text: #eaf9ff; --text-dim: #8fb4bf; --text-faint: #5a7480;
-    --red: #ff8a80; --green: #7fe9a0;
+    --red: #ff8a80; --green: #7fe9a0; --amber: #ffcf7a;
     --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   }
   *{ box-sizing: border-box; }
   body{
-    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    margin: 0; min-height: 100vh; color: var(--text);
     font-family: var(--sans); display: flex; flex-direction: column; align-items: center;
+    /* A soft glow from the top, echoing the Island's own glow language on
+       index.html, so this page doesn't read as a bare utility screen
+       bolted onto the rest of the site. */
+    background:
+      radial-gradient(ellipse 900px 520px at 50% -10%, rgba(0,207,255,0.09), transparent 60%),
+      radial-gradient(ellipse 700px 400px at 100% 100%, rgba(181,123,255,0.05), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
   }
   a{ color: var(--cyan); }
   .topbar{
     width: 100%; padding: 18px 32px; border-bottom: 1px solid var(--border-soft);
-    background: var(--bg-raised); display: flex; justify-content: space-between; align-items: center;
+    background: rgba(10,18,22,0.7); backdrop-filter: blur(6px);
+    display: flex; justify-content: space-between; align-items: center;
   }
   .brand{ font-weight: 700; font-size: 1.05rem; color: var(--cyan-bright); text-decoration: none; }
 
-  .wrap{ width: 100%; max-width: 380px; padding: 60px 20px; }
+  .wrap{ width: 100%; max-width: 400px; padding: 60px 20px; }
   .card{
     background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
     padding: 28px 24px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.5);
   }
   h1{ font-size: 1.3rem; font-weight: 600; margin: 0 0 4px; }
+  h2.section-title{
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-faint); margin: 26px 0 12px; font-weight: 600;
+  }
   .sub{ color: var(--text-dim); font-size: 0.9rem; margin: 0 0 22px; }
 
   .tabs{ display: flex; gap: 4px; margin-bottom: 22px; background: var(--bg-raised); border-radius: 10px; padding: 4px; }
@@ -52,17 +66,24 @@
     background: var(--cyan); color: #04141a; font-weight: 600; font-size: 0.95rem; cursor: pointer;
   }
   button.primary:hover{ background: var(--cyan-bright); }
-  button.primary:disabled{ opacity: 0.55; cursor: default; }
+  button.primary:disabled{ opacity: 0.5; cursor: default; }
   button.ghost{
     width: 100%; margin-top: 10px; padding: 11px 0; border-radius: 10px;
     background: transparent; border: 1px solid var(--border); color: var(--text);
     font-size: 0.9rem; cursor: pointer;
   }
   button.ghost:hover{ border-color: var(--cyan); }
+  button.ghost:disabled{ opacity: 0.5; cursor: default; }
+  button.small{
+    width: auto; margin-top: 0; padding: 9px 16px; font-size: 0.85rem;
+  }
+  .row{ display: flex; gap: 8px; align-items: flex-start; }
+  .row input{ flex: 1; }
 
   .msg{ margin-top: 14px; font-size: 0.85rem; padding: 10px 12px; border-radius: 8px; display: none; }
   .msg.error{ background: rgba(255,138,128,0.1); color: var(--red); border: 1px solid rgba(255,138,128,0.3); }
   .msg.ok{ background: rgba(127,233,160,0.1); color: var(--green); border: 1px solid rgba(127,233,160,0.3); }
+  .msg.warn{ background: rgba(255,207,122,0.1); color: var(--amber); border: 1px solid rgba(255,207,122,0.3); }
 
   .kv{ display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border-soft); font-size: 0.9rem; }
   .kv:first-of-type{ border-top: none; }
@@ -91,7 +112,6 @@
         <div class="tab" id="tabLogin">Log in</div>
       </div>
 
-      <!-- Sign up form -->
       <div id="signupForm">
         <label for="su_name">Account name</label>
         <input id="su_name" type="text" autocomplete="username" placeholder="e.g. shadowfox">
@@ -100,9 +120,9 @@
         <label for="su_pass">Password</label>
         <input id="su_pass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
         <button class="primary" id="su_submit">Create account</button>
+        <button class="ghost hidden" id="su_resend">Resend confirmation email</button>
       </div>
 
-      <!-- Log in form -->
       <div id="loginForm" class="hidden">
         <label for="li_email">Email</label>
         <input id="li_email" type="email" autocomplete="email" placeholder="you@example.com">
@@ -124,9 +144,34 @@
 
       <button class="primary" id="downloadBtn">Download for Windows</button>
       <button class="ghost" id="upgradeBtn">Upgrade (coming soon)</button>
-      <button class="ghost" id="logoutBtn">Log out</button>
 
+      <h2 class="section-title">Settings</h2>
+      <label for="settingsName">Account name</label>
+      <div class="row">
+        <input id="settingsName" type="text">
+        <button class="primary small" id="settingsSave">Save</button>
+      </div>
+      <div class="msg" id="settingsMsg"></div>
+
+      <button class="ghost" id="logoutBtn" style="margin-top:26px;">Log out</button>
       <div class="msg" id="dashMsg"></div>
+    </div>
+
+    <!-- ============ LOGGED IN, BUT NO PROFILE/ENTITLEMENT ROW ============ -->
+    <div id="brokenView" class="hidden">
+      <h1>Account data missing</h1>
+      <p class="sub">
+        You're logged in, but this account has no profile or subscription
+        data attached to it. This usually means it was deleted directly
+        from a database table rather than removed as a login.
+      </p>
+      <div class="msg warn" style="display:block;">
+        To clean this up: log out, then in the Supabase dashboard go to
+        <strong>Authentication &rarr; Users</strong> (not Table Editor) and
+        delete this user from there - that removes it properly. Then sign
+        up again with a fresh email.
+      </div>
+      <button class="ghost" id="brokenLogoutBtn" style="margin-top:16px;">Log out</button>
     </div>
 
   </div>
@@ -134,13 +179,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// Everything below is wrapped in one try/catch. Before this, any error
-// during setup (the CDN library failing to load, a typo'd element id, a
-// bad key format, anything) failed completely silently - which is exactly
-// what "the button doesn't even respond" was: the script died partway
-// through attaching the click handlers, so most of them were simply never
-// attached at all, with nothing on screen to say so. Now any such failure
-// shows a visible red banner with the real error message instead.
 try {
 
 if (typeof supabase === "undefined") {
@@ -149,19 +187,12 @@ if (typeof supabase === "undefined") {
     "blocking cdn.jsdelivr.net.");
 }
 
-// ============================================================================
-// Fill these in from Supabase: Settings -> API -> Project URL / anon public key.
-// Safe to have these visible in page source - the anon key has no power on
-// its own, the RLS policies in aven_schema.sql are what actually restrict
-// what any given request can read or write.
-// ============================================================================
 const SUPABASE_URL = "https://upiadmvxzphegivqszvp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_iS9do7OPQuY-zEeAFfSrWQ_zA_IAObI";
-
 const DOWNLOAD_URL = "https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe";
+const RESEND_COOLDOWN_SECONDS = 30;
 
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 const el = (id) => document.getElementById(id);
 
 function showMsg(id, text, kind){
@@ -171,10 +202,9 @@ function showMsg(id, text, kind){
   box.style.display = "block";
 }
 function hideMsg(id){ el(id).style.display = "none"; }
-
 function setBusy(btn, busy, label){
   btn.disabled = busy;
-  btn.textContent = busy ? "..." : label;
+  if (label !== undefined) btn.textContent = label;
 }
 
 // ---- tab switching ----
@@ -193,6 +223,46 @@ el("tabLogin").onclick = () => {
   hideMsg("authMsg");
 };
 
+// ---- resend confirmation, with a 30s cooldown so it can't be hammered
+// into hitting Supabase's own email rate limit even faster ----
+let lastSignupEmail = null;
+let resendTimer = null;
+
+function startResendCooldown(){
+  const btn = el("su_resend");
+  btn.classList.remove("hidden");
+  let remaining = RESEND_COOLDOWN_SECONDS;
+  setBusy(btn, true, `Resend in ${remaining}s`);
+  clearInterval(resendTimer);
+  resendTimer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(resendTimer);
+      setBusy(btn, false, "Resend confirmation email");
+    } else {
+      setBusy(btn, true, `Resend in ${remaining}s`);
+    }
+  }, 1000);
+}
+
+el("su_resend").onclick = async () => {
+  if (!lastSignupEmail) return;
+  setBusy(el("su_resend"), true, "Sending...");
+  const { error } = await supa.auth.resend({ type: "signup", email: lastSignupEmail });
+  if (error) {
+    const msg = (error.message || "").toLowerCase();
+    if (msg.includes("rate") || msg.includes("limit")) {
+      showMsg("authMsg", "Too many attempts - Supabase's own test mailer only allows " +
+        "a couple of emails per hour. Wait a bit before trying again.", "error");
+    } else {
+      showMsg("authMsg", error.message, "error");
+    }
+  } else {
+    showMsg("authMsg", "Confirmation email resent to " + lastSignupEmail + ".", "ok");
+  }
+  startResendCooldown();
+};
+
 // ---- sign up ----
 el("su_submit").onclick = async () => {
   hideMsg("authMsg");
@@ -209,11 +279,6 @@ el("su_submit").onclick = async () => {
     return;
   }
 
-  // Button stays disabled through the WHOLE attempt now, re-enabled only on
-  // error (so the user can fix something and retry) - not unconditionally
-  // right after the request resolves. That "resolved" moment used to
-  // include the success case where nothing visible had happened yet
-  // (see below), which is exactly what made it look spammable.
   setBusy(el("su_submit"), true);
   const { data, error } = await supa.auth.signUp({
     email, password,
@@ -222,34 +287,26 @@ el("su_submit").onclick = async () => {
 
   if (error) {
     setBusy(el("su_submit"), false, "Create account");
-    // VERIFICATION NOTE: the exact wording Supabase returns when the
-    // handle_new_user trigger fails (e.g. account_name already taken via
-    // the UNIQUE constraint) can vary by Supabase version - this checks
-    // for likely substrings rather than one exact string, and falls back
-    // to showing the real error so it's never silently swallowed.
     const msg = (error.message || "").toLowerCase();
     if (msg.includes("duplicate") || msg.includes("unique") || msg.includes("account_name")) {
       showMsg("authMsg", "That account name is already taken - try another.", "error");
+    } else if (msg.includes("rate") || msg.includes("limit")) {
+      showMsg("authMsg", "Too many signup attempts in a short time - wait a few minutes and try again.", "error");
     } else {
       showMsg("authMsg", error.message, "error");
     }
     return;
   }
 
-  // THE ACTUAL BUG: Supabase's default project settings require email
-  // confirmation before a session exists. signUp() still succeeds (the
-  // account IS created, exactly as the Table Editor screenshot showed),
-  // but data.session is null until the confirmation link is clicked -
-  // there is no session for refreshSession() to find, so it silently did
-  // nothing forever. Branch on whether a session actually came back,
-  // instead of assuming one always will.
   if (data.session) {
     await refreshSession();
   } else {
+    lastSignupEmail = email;
     setBusy(el("su_submit"), true, "Check your email");
     showMsg("authMsg",
       "Account created. Check " + email + " for a confirmation link, " +
-      "then log in above.", "ok");
+      "then log in above. Didn't get it? Check spam, or use resend below.", "ok");
+    startResendCooldown();
   }
 };
 
@@ -266,9 +323,6 @@ el("li_submit").onclick = async () => {
   const { error } = await supa.auth.signInWithPassword({ email, password });
   if (error) {
     setBusy(el("li_submit"), false, "Log in");
-    // "wrong password" would be actively misleading for someone who just
-    // hasn't confirmed their email yet - same root cause as the signup
-    // fix above, different entry point.
     const msg = (error.message || "").toLowerCase();
     if (msg.includes("confirm")) {
       showMsg("authMsg", "Confirm your email first - check your inbox for the link.", "error");
@@ -280,41 +334,78 @@ el("li_submit").onclick = async () => {
   await refreshSession();
 };
 
-// ---- log out ----
-el("logoutBtn").onclick = async () => {
+// ---- log out (both buttons - the normal dashboard and the broken-account view) ----
+async function doLogout(){
   await supa.auth.signOut();
   el("dashView").classList.add("hidden");
+  el("brokenView").classList.add("hidden");
   el("authView").classList.remove("hidden");
-};
+}
+el("logoutBtn").onclick = doLogout;
+el("brokenLogoutBtn").onclick = doLogout;
 
 el("downloadBtn").onclick = () => { window.location.href = DOWNLOAD_URL; };
 el("upgradeBtn").onclick = () => {
   showMsg("dashMsg", "Paid tiers aren't wired up yet - coming soon.", "ok");
 };
 
-// ---- load the logged-in dashboard: own profile + own tier ----
-// Both queries only ever return THIS user's row - not because the query
-// asks nicely, but because the RLS policies in aven_schema.sql only let
-// auth.uid() = id rows through at all, for anyone.
+// ---- settings: rename account_name, same uniqueness handling as signup ----
+el("settingsSave").onclick = async () => {
+  hideMsg("settingsMsg");
+  const newName = el("settingsName").value.trim();
+  if (!newName) {
+    showMsg("settingsMsg", "Account name can't be empty.", "error");
+    return;
+  }
+  setBusy(el("settingsSave"), true, "...");
+  const { data: { session } } = await supa.auth.getSession();
+  const { error } = await supa.from("profiles").update({ account_name: newName }).eq("id", session.user.id);
+  setBusy(el("settingsSave"), false, "Save");
+
+  if (error) {
+    const msg = (error.message || "").toLowerCase();
+    if (msg.includes("duplicate") || msg.includes("unique")) {
+      showMsg("settingsMsg", "That name is already taken - try another.", "error");
+    } else {
+      showMsg("settingsMsg", error.message, "error");
+    }
+    return;
+  }
+  showMsg("settingsMsg", "Saved.", "ok");
+  el("dashName").textContent = "Signed in as " + newName;
+};
+
+// ---- load the logged-in dashboard ----
 async function refreshSession(){
   const { data: { session } } = await supa.auth.getSession();
   if (!session) return;
 
   const uid = session.user.id;
-
-  const { data: profile } = await supa.from("profiles").select("account_name").eq("id", uid).single();
-  const { data: entitlement } = await supa.from("entitlements").select("tier_id, tier_source").eq("id", uid).single();
+  const { data: profile } = await supa.from("profiles").select("account_name").eq("id", uid).maybeSingle();
+  const { data: entitlement } = await supa.from("entitlements").select("tier_id, tier_source").eq("id", uid).maybeSingle();
 
   el("authView").classList.add("hidden");
+
+  // A logged-in session with no profile/entitlement row is exactly the
+  // "manually deleted from Table Editor instead of Authentication -> Users"
+  // scenario - show a clear explanation instead of silently displaying
+  // blank/undefined fields or throwing on the .single() call this used to
+  // use (which errors on zero rows; maybeSingle() returns null instead).
+  if (!profile || !entitlement) {
+    el("dashView").classList.add("hidden");
+    el("brokenView").classList.remove("hidden");
+    return;
+  }
+
+  el("brokenView").classList.add("hidden");
   el("dashView").classList.remove("hidden");
-  el("dashName").textContent = "Signed in as " + (profile ? profile.account_name : session.user.email);
-  el("dashTier").textContent = entitlement ? entitlement.tier_id : "unknown";
-  el("dashSource").textContent = entitlement && entitlement.tier_source === "manual" ? "Manually granted" :
-                                  entitlement && entitlement.tier_source === "stripe" ? "Paid subscription" : "Free signup";
+  el("dashName").textContent = "Signed in as " + profile.account_name;
+  el("dashTier").textContent = entitlement.tier_id;
+  el("dashSource").textContent = entitlement.tier_source === "manual" ? "Manually granted" :
+                                  entitlement.tier_source === "stripe" ? "Paid subscription" : "Free signup";
+  el("settingsName").value = profile.account_name;
 }
 
-// Check for an existing session on page load (Supabase persists it in
-// localStorage by default, so a refresh doesn't log the user out).
 refreshSession();
 
 } catch (fatalError) {
