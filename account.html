@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A.V.E.N. — your account</title>
+<style>
+  :root{
+    --bg: #04080a; --bg-raised: #0a1216; --bg-card: #0e161a;
+    --border: #183038; --border-soft: #0f2028;
+    --cyan: #00cfff; --cyan-bright: #00ffff;
+    --text: #eaf9ff; --text-dim: #8fb4bf; --text-faint: #5a7480;
+    --red: #ff8a80; --green: #7fe9a0;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: var(--sans); display: flex; flex-direction: column; align-items: center;
+  }
+  a{ color: var(--cyan); }
+  .topbar{
+    width: 100%; padding: 18px 32px; border-bottom: 1px solid var(--border-soft);
+    background: var(--bg-raised); display: flex; justify-content: space-between; align-items: center;
+  }
+  .brand{ font-weight: 700; font-size: 1.05rem; color: var(--cyan-bright); text-decoration: none; }
+
+  .wrap{ width: 100%; max-width: 380px; padding: 60px 20px; }
+  .card{
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px 24px;
+  }
+  h1{ font-size: 1.3rem; font-weight: 600; margin: 0 0 4px; }
+  .sub{ color: var(--text-dim); font-size: 0.9rem; margin: 0 0 22px; }
+
+  .tabs{ display: flex; gap: 4px; margin-bottom: 22px; background: var(--bg-raised); border-radius: 10px; padding: 4px; }
+  .tab{
+    flex: 1; text-align: center; padding: 9px 0; border-radius: 8px; cursor: pointer;
+    font-size: 0.88rem; color: var(--text-faint); user-select: none;
+  }
+  .tab.active{ background: var(--cyan); color: #04141a; font-weight: 600; }
+
+  label{ display: block; font-size: 0.82rem; color: var(--text-dim); margin: 14px 0 6px; }
+  input{
+    width: 100%; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-raised); color: var(--text); font-size: 0.95rem; font-family: var(--sans);
+  }
+  input:focus{ outline: 2px solid var(--cyan); outline-offset: 1px; }
+
+  button.primary{
+    width: 100%; margin-top: 20px; padding: 12px 0; border-radius: 10px; border: none;
+    background: var(--cyan); color: #04141a; font-weight: 600; font-size: 0.95rem; cursor: pointer;
+  }
+  button.primary:hover{ background: var(--cyan-bright); }
+  button.primary:disabled{ opacity: 0.55; cursor: default; }
+  button.ghost{
+    width: 100%; margin-top: 10px; padding: 11px 0; border-radius: 10px;
+    background: transparent; border: 1px solid var(--border); color: var(--text);
+    font-size: 0.9rem; cursor: pointer;
+  }
+  button.ghost:hover{ border-color: var(--cyan); }
+
+  .msg{ margin-top: 14px; font-size: 0.85rem; padding: 10px 12px; border-radius: 8px; display: none; }
+  .msg.error{ background: rgba(255,138,128,0.1); color: var(--red); border: 1px solid rgba(255,138,128,0.3); }
+  .msg.ok{ background: rgba(127,233,160,0.1); color: var(--green); border: 1px solid rgba(127,233,160,0.3); }
+
+  .kv{ display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border-soft); font-size: 0.9rem; }
+  .kv:first-of-type{ border-top: none; }
+  .kv span:first-child{ color: var(--text-faint); }
+
+  .hidden{ display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="index.html">A.V.E.N.</a>
+  <a href="index.html" style="color:var(--text-faint); font-size:0.85rem; text-decoration:none;">&larr; back</a>
+</div>
+
+<div class="wrap">
+  <div class="card">
+
+    <!-- ============ LOGGED OUT: sign up / log in ============ -->
+    <div id="authView">
+      <h1>Your account</h1>
+      <p class="sub">Create an account, or log back in.</p>
+
+      <div class="tabs">
+        <div class="tab active" id="tabSignup">Sign up</div>
+        <div class="tab" id="tabLogin">Log in</div>
+      </div>
+
+      <!-- Sign up form -->
+      <div id="signupForm">
+        <label for="su_name">Account name</label>
+        <input id="su_name" type="text" autocomplete="username" placeholder="e.g. shadowfox">
+        <label for="su_email">Email</label>
+        <input id="su_email" type="email" autocomplete="email" placeholder="you@example.com">
+        <label for="su_pass">Password</label>
+        <input id="su_pass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+        <button class="primary" id="su_submit">Create account</button>
+      </div>
+
+      <!-- Log in form -->
+      <div id="loginForm" class="hidden">
+        <label for="li_email">Email</label>
+        <input id="li_email" type="email" autocomplete="email" placeholder="you@example.com">
+        <label for="li_pass">Password</label>
+        <input id="li_pass" type="password" autocomplete="current-password" placeholder="Your password">
+        <button class="primary" id="li_submit">Log in</button>
+      </div>
+
+      <div class="msg" id="authMsg"></div>
+    </div>
+
+    <!-- ============ LOGGED IN: dashboard ============ -->
+    <div id="dashView" class="hidden">
+      <h1>Welcome back</h1>
+      <p class="sub" id="dashName"></p>
+
+      <div class="kv"><span>Tier</span><span id="dashTier">&ndash;</span></div>
+      <div class="kv"><span>Status</span><span id="dashSource">&ndash;</span></div>
+
+      <button class="primary" id="downloadBtn">Download for Windows</button>
+      <button class="ghost" id="upgradeBtn">Upgrade (coming soon)</button>
+      <button class="ghost" id="logoutBtn">Log out</button>
+
+      <div class="msg" id="dashMsg"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ============================================================================
+// Fill these in from Supabase: Settings -> API -> Project URL / anon public key.
+// Safe to have these visible in page source - the anon key has no power on
+// its own, the RLS policies in aven_schema.sql are what actually restrict
+// what any given request can read or write.
+// ============================================================================
+const SUPABASE_URL = "PUT-YOUR-PROJECT-URL-HERE";
+const SUPABASE_ANON_KEY = "PUT-YOUR-ANON-PUBLIC-KEY-HERE";
+
+const DOWNLOAD_URL = "https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe";
+
+const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const el = (id) => document.getElementById(id);
+
+function showMsg(id, text, kind){
+  const box = el(id);
+  box.textContent = text;
+  box.className = "msg " + kind;
+  box.style.display = "block";
+}
+function hideMsg(id){ el(id).style.display = "none"; }
+
+function setBusy(btn, busy, label){
+  btn.disabled = busy;
+  btn.textContent = busy ? "..." : label;
+}
+
+// ---- tab switching ----
+el("tabSignup").onclick = () => {
+  el("tabSignup").classList.add("active");
+  el("tabLogin").classList.remove("active");
+  el("signupForm").classList.remove("hidden");
+  el("loginForm").classList.add("hidden");
+  hideMsg("authMsg");
+};
+el("tabLogin").onclick = () => {
+  el("tabLogin").classList.add("active");
+  el("tabSignup").classList.remove("active");
+  el("loginForm").classList.remove("hidden");
+  el("signupForm").classList.add("hidden");
+  hideMsg("authMsg");
+};
+
+// ---- sign up ----
+el("su_submit").onclick = async () => {
+  hideMsg("authMsg");
+  const account_name = el("su_name").value.trim();
+  const email = el("su_email").value.trim();
+  const password = el("su_pass").value;
+
+  if (!account_name || !email || !password) {
+    showMsg("authMsg", "Fill in all three fields.", "error");
+    return;
+  }
+  if (password.length < 6) {
+    showMsg("authMsg", "Password needs to be at least 6 characters.", "error");
+    return;
+  }
+
+  setBusy(el("su_submit"), true);
+  const { data, error } = await supa.auth.signUp({
+    email, password,
+    options: { data: { account_name } },
+  });
+  setBusy(el("su_submit"), false, "Create account");
+
+  if (error) {
+    // VERIFICATION NOTE: the exact wording Supabase returns when the
+    // handle_new_user trigger fails (e.g. account_name already taken via
+    // the UNIQUE constraint) can vary by Supabase version - this checks
+    // for likely substrings rather than one exact string, and falls back
+    // to showing the real error so it's never silently swallowed.
+    const msg = (error.message || "").toLowerCase();
+    if (msg.includes("duplicate") || msg.includes("unique") || msg.includes("account_name")) {
+      showMsg("authMsg", "That account name is already taken - try another.", "error");
+    } else {
+      showMsg("authMsg", error.message, "error");
+    }
+    return;
+  }
+  showMsg("authMsg", "Account created. Loading your dashboard...", "ok");
+  await refreshSession();
+};
+
+// ---- log in ----
+el("li_submit").onclick = async () => {
+  hideMsg("authMsg");
+  const email = el("li_email").value.trim();
+  const password = el("li_pass").value;
+  if (!email || !password) {
+    showMsg("authMsg", "Enter your email and password.", "error");
+    return;
+  }
+  setBusy(el("li_submit"), true);
+  const { error } = await supa.auth.signInWithPassword({ email, password });
+  setBusy(el("li_submit"), false, "Log in");
+  if (error) {
+    showMsg("authMsg", "Couldn't log in - check your email and password.", "error");
+    return;
+  }
+  await refreshSession();
+};
+
+// ---- log out ----
+el("logoutBtn").onclick = async () => {
+  await supa.auth.signOut();
+  el("dashView").classList.add("hidden");
+  el("authView").classList.remove("hidden");
+};
+
+el("downloadBtn").onclick = () => { window.location.href = DOWNLOAD_URL; };
+el("upgradeBtn").onclick = () => {
+  showMsg("dashMsg", "Paid tiers aren't wired up yet - coming soon.", "ok");
+};
+
+// ---- load the logged-in dashboard: own profile + own tier ----
+// Both queries only ever return THIS user's row - not because the query
+// asks nicely, but because the RLS policies in aven_schema.sql only let
+// auth.uid() = id rows through at all, for anyone.
+async function refreshSession(){
+  const { data: { session } } = await supa.auth.getSession();
+  if (!session) return;
+
+  const uid = session.user.id;
+
+  const { data: profile } = await supa.from("profiles").select("account_name").eq("id", uid).single();
+  const { data: entitlement } = await supa.from("entitlements").select("tier_id, tier_source").eq("id", uid).single();
+
+  el("authView").classList.add("hidden");
+  el("dashView").classList.remove("hidden");
+  el("dashName").textContent = "Signed in as " + (profile ? profile.account_name : session.user.email);
+  el("dashTier").textContent = entitlement ? entitlement.tier_id : "unknown";
+  el("dashSource").textContent = entitlement && entitlement.tier_source === "manual" ? "Manually granted" :
+                                  entitlement && entitlement.tier_source === "stripe" ? "Paid subscription" : "Free signup";
+}
+
+// Check for an existing session on page load (Supabase persists it in
+// localStorage by default, so a refresh doesn't log the user out).
+refreshSession();
+</script>
+</body>
+</html>
