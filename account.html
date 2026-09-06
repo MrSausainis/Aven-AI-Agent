@@ -118,6 +118,25 @@
 
   .hidden{ display: none !important; }
 
+  @keyframes fadeSlideIn{
+    from{ opacity: 0; transform: translateY(8px); }
+    to{ opacity: 1; transform: translateY(0); }
+  }
+  .fade-in{ animation: fadeSlideIn 0.32s ease; }
+  @media (prefers-reduced-motion: reduce){
+    .fade-in{ animation: none; }
+  }
+
+  /* Subtle press/hover feedback so clicks feel like they landed on
+     something, rather than an instant state swap with nothing in
+     between - this is what "too snappy" was actually describing. */
+  button, .tab, .dash-nav-item{
+    transition: transform 0.12s ease, background-color 0.15s ease,
+                border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+  }
+  button:active{ transform: scale(0.97); }
+  .card{ transition: box-shadow 0.25s ease; }
+
   @media (max-width: 720px){
     .dash-shell{ flex-direction: column; }
     .dash-sidebar{
@@ -237,8 +256,8 @@
       <button class="ghost block" id="upgradeBtn" style="margin-top:20px;">Upgrade</button>
 
       <div id="upgradeOptions" class="hidden" style="margin-top:14px;">
-        <button class="primary block" id="upgradeMonthlyBtn">Monthly</button>
-        <button class="ghost block" id="upgradeAnnualBtn">Annual</button>
+        <button class="primary block" id="upgradeMonthlyBtn">Monthly &mdash; &euro;2/mo</button>
+        <button class="ghost block" id="upgradeAnnualBtn">Annual &mdash; &euro;20/yr</button>
       </div>
       <div class="msg" id="upgradeMsg"></div>
     </section>
@@ -294,6 +313,19 @@ function setBusy(btn, busy, label){
   if (label !== undefined) btn.textContent = label;
 }
 
+// Retriggers a CSS animation on an element that already has the class -
+// just adding a class again does nothing if it's already present, since
+// the browser has no "it changed" signal to restart from. Removing it,
+// forcing a reflow (reading offsetWidth), then re-adding is the standard
+// way to make a repeatable entrance animation actually replay every time.
+function fadeIn(elOrId){
+  const target = typeof elOrId === "string" ? el(elOrId) : elOrId;
+  if (!target) return;
+  target.classList.remove("fade-in");
+  void target.offsetWidth;
+  target.classList.add("fade-in");
+}
+
 // Swaps which of the three top-level wraps is visible - the auth card, the
 // broken-account card, or the real dashboard shell. Kept in one place so
 // every caller (login, signup, logout, broken-account) goes through the
@@ -302,6 +334,8 @@ function showWrap(which){
   el("authWrap").classList.toggle("hidden", which !== "auth");
   el("brokenWrap").classList.toggle("hidden", which !== "broken");
   el("dashShell").classList.toggle("hidden", which !== "dash");
+  const shown = which === "auth" ? el("authView") : which === "broken" ? el("brokenView") : el("dashShell");
+  fadeIn(shown);
 }
 
 // ---- dashboard sidebar navigation ----
@@ -310,7 +344,9 @@ document.querySelectorAll(".dash-nav-item").forEach((item) => {
     document.querySelectorAll(".dash-nav-item").forEach((i) => i.classList.remove("active"));
     document.querySelectorAll(".dash-section").forEach((s) => s.classList.remove("active"));
     item.classList.add("active");
-    el("section-" + item.dataset.section).classList.add("active");
+    const section = el("section-" + item.dataset.section);
+    section.classList.add("active");
+    fadeIn(section);
   };
 });
 
@@ -319,6 +355,7 @@ el("tabSignup").onclick = () => {
   el("tabSignup").classList.add("active");
   el("tabLogin").classList.remove("active");
   el("signupForm").classList.remove("hidden");
+  fadeIn("signupForm");
   el("loginForm").classList.add("hidden");
   el("forgotForm").classList.add("hidden");
   hideMsg("authMsg");
@@ -327,6 +364,7 @@ el("tabLogin").onclick = () => {
   el("tabLogin").classList.add("active");
   el("tabSignup").classList.remove("active");
   el("loginForm").classList.remove("hidden");
+  fadeIn("loginForm");
   el("signupForm").classList.add("hidden");
   el("forgotForm").classList.add("hidden");
   hideMsg("authMsg");
