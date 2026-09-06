@@ -234,7 +234,13 @@
       <h1>Subscription</h1>
       <div class="kv"><span>Tier</span><span id="dashTier">&ndash;</span></div>
       <div class="kv"><span>Status</span><span id="dashSource">&ndash;</span></div>
-      <button class="ghost block" id="upgradeBtn" style="margin-top:20px;">Upgrade (coming soon)</button>
+      <button class="ghost block" id="upgradeBtn" style="margin-top:20px;">Upgrade</button>
+
+      <div id="upgradeOptions" class="hidden" style="margin-top:14px;">
+        <button class="primary block" id="upgradeMonthlyBtn">Monthly</button>
+        <button class="ghost block" id="upgradeAnnualBtn">Annual</button>
+      </div>
+      <div class="msg" id="upgradeMsg"></div>
     </section>
 
     <section class="dash-section" id="section-settings">
@@ -517,9 +523,44 @@ el("logoutBtn").onclick = doLogout;
 el("brokenLogoutBtn").onclick = doLogout;
 
 el("downloadBtn").onclick = () => { window.location.href = DOWNLOAD_URL; };
-el("upgradeBtn").onclick = () => {
-  showMsg("dashMsg", "Paid tiers aren't wired up yet - coming soon.", "ok");
+
+// Real Stripe Price IDs go here once created in the Stripe dashboard -
+// Products -> [tier] -> the Price's own ID (starts "price_..."), NOT the
+// Product ID (starts "prod_..."). Each Price also needs metadata
+// tier_id=<the matching tiers.tier_id value> set in Stripe - that's what
+// the stripe-webhook function reads to know which AVEN tier to grant.
+const STRIPE_PRICE_IDS = {
+  monthly: "price_1UCQWMJ78TGxjoZzOqm3A0NT",
+  annual: "price_1UCQf1J78TGxjoZz0jkIt8kU",
 };
+
+el("upgradeBtn").onclick = () => {
+  el("upgradeOptions").classList.toggle("hidden");
+};
+
+async function startCheckout(tierKey) {
+  hideMsg("upgradeMsg");
+  const priceId = STRIPE_PRICE_IDS[tierKey];
+  if (!priceId || priceId.startsWith("PUT-YOUR-")) {
+    showMsg("upgradeMsg", "Pricing isn't configured yet.", "error");
+    return;
+  }
+  showMsg("upgradeMsg", "Redirecting to checkout...", "ok");
+  const { data, error } = await supa.functions.invoke("create-checkout", {
+    body: { price_id: priceId },
+  });
+  if (error) {
+    showMsg("upgradeMsg", "Couldn't start checkout: " + error.message, "error");
+    return;
+  }
+  if (data && data.url) {
+    window.location.href = data.url;
+  } else {
+    showMsg("upgradeMsg", "Checkout didn't return a URL - try again in a moment.", "error");
+  }
+}
+el("upgradeMonthlyBtn").onclick = () => startCheckout("monthly");
+el("upgradeAnnualBtn").onclick = () => startCheckout("annual");
 
 // ---- settings: rename account_name, same uniqueness handling as signup ----
 el("settingsSave").onclick = async () => {
