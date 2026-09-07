@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Support A.V.E.N.</title>
+<style>
+  :root{
+    --bg: #05080a;
+    --cyan: #00cfff;
+    --cyan-bright: #00ffff;
+    --text: #e8f4f6;
+    --text-dim: #8fb4bf;
+    --text-faint: #5a7480;
+    --border: #1c2e34;
+    --border-soft: #142027;
+    --mono: 'Consolas', 'Courier New', monospace;
+    --sans: 'Segoe UI', system-ui, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans);
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+  }
+  main{ max-width: 560px; padding: 60px 24px; text-align: center; }
+  h1{ font-size: 1.8rem; margin-bottom: 8px; }
+  .sub{ color: var(--text-dim); margin-bottom: 32px; }
+  p{ color: var(--text-dim); line-height: 1.6; text-align: left; margin-bottom: 18px; }
+  .options{ display: flex; flex-direction: column; gap: 14px; margin: 32px 0; }
+  .option{
+    display: block; padding: 18px; border-radius: 12px; border: 1px solid var(--border);
+    text-decoration: none; color: var(--text); text-align: left; transition: border-color 0.15s;
+  }
+  .option:hover{ border-color: var(--cyan); }
+  .option .label{ font-weight: 600; margin-bottom: 4px; }
+  .option .detail{ font-size: 0.85rem; color: var(--text-faint); }
+  a.back{ color: var(--cyan); text-decoration: none; font-size: 0.9rem; }
+  a.back:hover{ color: var(--cyan-bright); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Support A.V.E.N.</h1>
+  <p class="sub">One person, building this in their spare time.</p>
+
+  <p>A.V.E.N. runs on Supabase, GitHub, and everyone's own free Groq key
+    for AI - there's no shared subscription cost hiding behind the
+    scenes. Paid tiers cover the extra tools and keep this sustainable
+    to keep building. If you'd rather just chip in directly instead of
+    subscribing, that helps just as much.</p>
+
+  <div class="options">
+    <!-- TODO: replace with a real Stripe Payment Link (Stripe Dashboard
+         -> Payment Links -> New, one-time payment, any amount) - the
+         easiest option since Stripe is already wired up for the paid
+         tiers. Ko-fi / Buy Me a Coffee / PayPal.me all work just as well
+         if preferred; swap the href and label below either way. -->
+    <a class="option" href="#" id="donateLink">
+      <div class="label">One-time donation</div>
+      <div class="detail">Any amount, no account needed</div>
+    </a>
+  </div>
+
+  <p style="text-align:center; font-size: 0.85rem; color: var(--text-faint);">
+    Not able to donate? A review on the
+    <a href="index.html#reviewsSection" style="color: var(--cyan);">homepage</a>
+    or just telling a friend helps too.
+  </p>
+
+  <p style="margin-top: 32px; text-align: center;">
+    <a class="back" href="index.html">&larr; Back to A.V.E.N.</a>
+  </p>
+</main>
+</body>
+</html>
