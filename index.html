@@ -294,6 +294,14 @@
   }
   .requirements span{ margin: 0 11px; }
 
+  .setup-note{
+    margin-top: 20px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    max-width: 480px;
+  }
+  .setup-note a{ color: var(--cyan-bright); }
+
   footer{
     border-top: 1px solid var(--border-soft);
     padding: 28px 32px;
@@ -420,6 +428,12 @@
       <span>SSD RECOMMENDED</span>
       <span>LIGHTWEIGHT INSTALL</span>
     </div>
+    <p class="setup-note">
+      Voice chat and AI features need a free Groq API key (no credit card) —
+      <a href="https://console.groq.com/keys" target="_blank" rel="noopener">get one here</a>,
+      then paste it into AVEN's Settings &gt; AI Core. Everything else
+      (Office Automation, folder tidy, themes) works without one.
+    </p>
   </section>
 
   <footer>
