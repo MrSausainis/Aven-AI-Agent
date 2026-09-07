@@ -42,7 +42,7 @@
   }
 
   /* ---- full dashboard layout: sidebar + content, once logged in ---- */
-  .dash-shell{ display: flex; flex: 1; width: 100%; max-width: 1000px; margin: 0 auto; }
+  .dash-shell{ display: flex; flex: 1; width: 100%; max-width: 1240px; margin: 0 auto; }
   .dash-sidebar{
     width: 220px; flex: none; padding: 32px 16px;
     border-right: 1px solid var(--border-soft);
@@ -63,10 +63,51 @@
   .dash-nav-item:hover{ background: var(--bg-raised); color: var(--text); }
   .dash-nav-item.active{ background: rgba(0,207,255,0.12); color: var(--cyan-bright); font-weight: 600; }
 
-  .dash-main{ flex: 1; padding: 40px 44px; max-width: 560px; }
+  .dash-main{ flex: 1; padding: 40px 48px; max-width: 820px; }
   .dash-section{ display: none; }
   .dash-section.active{ display: block; }
   .dash-main h1{ font-size: 1.4rem; font-weight: 600; margin: 0 0 22px; }
+
+  /* ---- Features section: what the current tier includes ---- */
+  .feature-list{ display: flex; flex-direction: column; gap: 2px; }
+  .feature-row{
+    display: flex; align-items: center; gap: 12px; padding: 13px 4px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .feature-row:first-child{ border-top: none; }
+  .feature-mark{
+    width: 22px; height: 22px; border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 700;
+  }
+  .feature-row.on .feature-mark{ background: rgba(127,233,160,0.14); color: var(--green); }
+  .feature-row.off .feature-mark{ background: rgba(90,116,128,0.14); color: var(--text-faint); }
+  .feature-row .feature-name{ flex: 1; font-size: 0.95rem; }
+  .feature-row.off .feature-name{ color: var(--text-faint); }
+  .feature-note{
+    margin-top: 22px; padding: 14px 16px; border-radius: 10px;
+    background: var(--bg-raised); border: 1px solid var(--border-soft);
+    font-size: 0.85rem; color: var(--text-dim);
+  }
+
+  /* ---- Theme picker (Settings section) ---- */
+  .theme-swatches{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
+  .theme-swatch{
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    width: 84px; padding: 10px 6px 8px; border-radius: 12px;
+    border: 1px solid var(--border-soft); background: transparent; cursor: pointer;
+  }
+  .theme-swatch:hover{ border-color: var(--border); }
+  .theme-swatch-dot{
+    width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--dot-accent, var(--cyan));
+    background: var(--dot-bg, var(--bg-raised));
+  }
+  .theme-swatch-label{ font-size: 0.72rem; color: var(--text-dim); text-align: center; line-height: 1.2; }
+  .theme-swatch.active{ border-color: var(--cyan); background: rgba(0,207,255,0.08); }
+  .theme-swatch.active .theme-swatch-label{ color: var(--cyan-bright); font-weight: 600; }
+  .theme-swatch.locked{ opacity: 0.45; cursor: default; }
+  .theme-swatch.locked:hover{ border-color: var(--border-soft); }
+  .theme-swatch-lock{ font-size: 0.65rem; color: var(--amber); }
 
   h1{ font-size: 1.3rem; font-weight: 600; margin: 0 0 4px; }
   h2.section-title{
@@ -236,6 +277,7 @@
     <nav class="dash-nav">
       <div class="dash-nav-item active" data-section="overview">Overview</div>
       <div class="dash-nav-item" data-section="subscription">Subscription</div>
+      <div class="dash-nav-item" data-section="features">Features</div>
       <div class="dash-nav-item" data-section="settings">Settings</div>
     </nav>
     <button class="ghost" id="logoutBtn">Log out</button>
@@ -262,6 +304,15 @@
       <div class="msg" id="upgradeMsg"></div>
     </section>
 
+    <section class="dash-section" id="section-features">
+      <h1>Features</h1>
+      <p class="sub">What's included in your current tier.</p>
+      <div class="feature-list" id="featuresList">
+        <div class="feature-row off"><span class="feature-mark">&ndash;</span><span class="feature-name">Loading...</span></div>
+      </div>
+      <div class="feature-note" id="futureUpdatesNote"></div>
+    </section>
+
     <section class="dash-section" id="section-settings">
       <h1>Settings</h1>
 
@@ -271,6 +322,11 @@
         <button class="primary" id="settingsSave">Save</button>
       </div>
       <div class="msg" id="settingsMsg"></div>
+
+      <h2 class="section-title" style="margin-top:32px;">Theme</h2>
+      <p class="sub" style="margin-bottom:14px;">Carries over to the desktop app on your next login.</p>
+      <div class="theme-swatches" id="themeSwatches"></div>
+      <div class="msg" id="themeMsg"></div>
 
       <h2 class="section-title" style="margin-top:32px;">Password</h2>
       <label for="settingsNewPass">New password</label>
@@ -297,6 +353,18 @@ const SUPABASE_URL = "https://upiadmvxzphegivqszvp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_iS9do7OPQuY-zEeAFfSrWQ_zA_IAObI";
 const DOWNLOAD_URL = "https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe";
 const RESEND_COOLDOWN_SECONDS = 30;
+
+// Colors lifted directly from the real app's THEMES dict (aven_main.py) -
+// same convention index.html already uses for its own palette. Order here
+// is display order for the swatches, not tied to any tier ranking.
+const THEME_COLORS = {
+  "Holographic E.V.A.": { bg: "#04080a", accent: "#00cfff" },
+  "Midnight Purple":    { bg: "#08060f", accent: "#b57bff" },
+  "Crimson Core":       { bg: "#0a0406", accent: "#e63946" },
+  "Phantom Silver":     { bg: "#111111", accent: "#e6e6e6" },
+  "Monochrome":         { bg: "#000000", accent: "#ffffff" },
+};
+const ALL_THEME_NAMES = Object.keys(THEME_COLORS);
 
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const el = (id) => document.getElementById(id);
@@ -668,7 +736,11 @@ async function refreshSession(){
 
   const uid = session.user.id;
   const { data: profile } = await supa.from("profiles").select("account_name").eq("id", uid).maybeSingle();
-  const { data: entitlement } = await supa.from("entitlements").select("tier_id, tier_source").eq("id", uid).maybeSingle();
+  const { data: entitlement } = await supa.from("entitlements")
+    .select("tier_id, tier_source, preferred_theme, tiers(display_name, cloud_enabled, " +
+            "widgets_enabled, music_player_enabled, office_tools_enabled, " +
+            "streamer_tools_enabled, priority_support, allowed_themes, future_updates)")
+    .eq("id", uid).maybeSingle();
 
   // A logged-in session with no profile/entitlement row is exactly the
   // "manually deleted from Table Editor instead of Authentication -> Users"
@@ -701,10 +773,78 @@ async function refreshSession(){
   showWrap("dash");
   el("dashName").textContent = profile.account_name;
   el("dashAvatar").textContent = profile.account_name.charAt(0).toUpperCase();
-  el("dashTier").textContent = entitlement.tier_id;
+  el("dashTier").textContent = entitlement.tiers?.display_name || entitlement.tier_id;
   el("dashSource").textContent = entitlement.tier_source === "manual" ? "Manually granted" :
                                   entitlement.tier_source === "stripe" ? "Paid subscription" : "Free signup";
   el("settingsName").value = profile.account_name;
+
+  renderFeatures(entitlement.tiers || {});
+  renderThemeSwatches(entitlement.tiers?.allowed_themes || ["Holographic E.V.A."], entitlement.preferred_theme);
+}
+
+// ---- Features section: a plain checklist off the tiers embed, no logic
+// beyond "is this flag true" - matches how the desktop Settings cards
+// already treat these same flags (informational, enforcement lives
+// server-side / in aven_brain.py's tool methods).
+function renderFeatures(tier){
+  const rows = [
+    ["Cloud AI requests", tier.cloud_enabled],
+    ["Overlay widgets", tier.widgets_enabled],
+    ["Music player", tier.music_player_enabled],
+    ["Office Automation (Excel/CSV, folder tidy, screenshots)", tier.office_tools_enabled],
+    ["Streamer tools extension (OBS control)", tier.streamer_tools_enabled],
+    ["Priority support", tier.priority_support],
+  ];
+  el("featuresList").innerHTML = rows.map(([name, on]) => `
+    <div class="feature-row ${on ? "on" : "off"}">
+      <span class="feature-mark">${on ? "&check;" : "&times;"}</span>
+      <span class="feature-name">${name}</span>
+    </div>`).join("");
+
+  const noteText = {
+    all: "Every future paid feature is included permanently on this tier - no re-upgrade needed as A.V.E.N. grows.",
+    subscription: "Every current and future paid feature is included for as long as your subscription stays active.",
+    none: "New paid features added later aren't automatically included on this tier.",
+  }[tier.future_updates] || "";
+  const note = el("futureUpdatesNote");
+  if (noteText) { note.textContent = noteText; note.style.display = "block"; }
+  else { note.style.display = "none"; }
+}
+
+// ---- Theme picker: every known theme is shown, even ones this tier
+// doesn't include - locked-but-visible (same convention as the desktop
+// app's locked-feature banners) reads as "here's what upgrading gets you",
+// not just a shorter list with no explanation.
+function renderThemeSwatches(allowedThemes, preferred){
+  el("themeSwatches").innerHTML = ALL_THEME_NAMES.map((name) => {
+    const c = THEME_COLORS[name];
+    const locked = !allowedThemes.includes(name);
+    const active = !locked && name === preferred;
+    return `
+      <button type="button" class="theme-swatch ${active ? "active" : ""} ${locked ? "locked" : ""}"
+              data-theme="${name}" ${locked ? "disabled" : ""}
+              style="--dot-bg:${c.bg}; --dot-accent:${c.accent};">
+        <span class="theme-swatch-dot"></span>
+        <span class="theme-swatch-label">${name}</span>
+        ${locked ? '<span class="theme-swatch-lock">Locked</span>' : ""}
+      </button>`;
+  }).join("");
+
+  document.querySelectorAll(".theme-swatch:not(.locked)").forEach((btn) => {
+    btn.onclick = async () => {
+      hideMsg("themeMsg");
+      const theme = btn.dataset.theme;
+      document.querySelectorAll(".theme-swatch").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      const { data: { session } } = await supa.auth.getSession();
+      const { error } = await supa.from("profiles").update({ preferred_theme: theme }).eq("id", session.user.id);
+      if (error) {
+        showMsg("themeMsg", error.message, "error");
+        return;
+      }
+      showMsg("themeMsg", "Saved - applies next time you open A.V.E.N.", "ok");
+    };
+  });
 }
 
 refreshSession();
