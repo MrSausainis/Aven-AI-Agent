@@ -5,7 +5,7 @@
       "id": "obs_streamer_tools",
       "name": "Streamer Tools (OBS + Twitch)",
       "description": "Voice-controlled OBS (start/stop stream, switch scenes, mute sources, save a clip) plus Twitch live-status checks and chat posting.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tier_flag": "streamer_tools_enabled",
       "download_url": "https://github.com/MrSausainis/Aven-AI-Agent/releases/download/extensions/obs_streamer_tools.zip"
     }
