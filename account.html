@@ -130,6 +130,17 @@
   }
   input:focus{ outline: 2px solid var(--cyan); outline-offset: 1px; }
 
+  textarea{
+    width: 100%; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-raised); color: var(--text); font-size: 0.95rem; font-family: var(--sans);
+    resize: vertical;
+  }
+  textarea:focus{ outline: 2px solid var(--cyan); outline-offset: 1px; }
+
+  .star-picker{ font-size: 1.6rem; letter-spacing: 4px; margin-bottom: 12px; }
+  .star-picker span{ cursor: pointer; color: var(--border); transition: color 0.1s; }
+  .star-picker span.filled{ color: #ffcf3f; }
+
   button.primary{
     padding: 12px 22px; border-radius: 10px; border: none;
     background: var(--cyan); color: #04141a; font-weight: 600; font-size: 0.95rem; cursor: pointer;
@@ -335,6 +346,15 @@
       <input id="settingsNewPass2" type="password" autocomplete="new-password" placeholder="Type it again">
       <button class="primary block" id="settingsPassSave" style="margin-top:16px;">Change password</button>
       <div class="msg" id="settingsPassMsg"></div>
+
+      <h2 class="section-title" style="margin-top:32px;">Leave a review</h2>
+      <p class="sub" style="margin-bottom:14px;">Shown publicly on the homepage under your account name. One per account - saving again edits your existing review.</p>
+      <div class="star-picker" id="starPicker">
+        <span data-star="1">&#9733;</span><span data-star="2">&#9733;</span><span data-star="3">&#9733;</span><span data-star="4">&#9733;</span><span data-star="5">&#9733;</span>
+      </div>
+      <textarea id="reviewBody" maxlength="500" rows="3" placeholder="What's your experience with A.V.E.N. been like?"></textarea>
+      <button class="primary block" id="reviewSave" style="margin-top:10px;">Save review</button>
+      <div class="msg" id="reviewMsg"></div>
     </section>
   </main>
 </div>
@@ -729,6 +749,57 @@ el("settingsPassSave").onclick = async () => {
   showMsg("settingsPassMsg", "Password changed.", "ok");
 };
 
+// ---- Leave a review ----
+let selectedRating = 0;
+function paintStars(rating){
+  document.querySelectorAll("#starPicker span").forEach((s) => {
+    s.classList.toggle("filled", parseInt(s.dataset.star) <= rating);
+  });
+}
+document.querySelectorAll("#starPicker span").forEach((s) => {
+  s.onclick = () => {
+    selectedRating = parseInt(s.dataset.star);
+    paintStars(selectedRating);
+  };
+});
+
+async function loadOwnReview(uid){
+  const { data } = await supa.from("reviews").select("rating, body").eq("id", uid).maybeSingle();
+  if (data) {
+    selectedRating = data.rating;
+    paintStars(selectedRating);
+    el("reviewBody").value = data.body;
+  }
+}
+
+el("reviewSave").onclick = async () => {
+  hideMsg("reviewMsg");
+  const body = el("reviewBody").value.trim();
+  if (!selectedRating) {
+    showMsg("reviewMsg", "Pick a star rating first.", "error");
+    return;
+  }
+  if (!body) {
+    showMsg("reviewMsg", "Write a few words first.", "error");
+    return;
+  }
+  const { data: { session } } = await supa.auth.getSession();
+  const { data: profile } = await supa.from("profiles").select("account_name").eq("id", session.user.id).maybeSingle();
+  setBusy(el("reviewSave"), true, "...");
+  const { error } = await supa.from("reviews").upsert({
+    id: session.user.id,
+    account_name: profile.account_name,
+    rating: selectedRating,
+    body: body,
+  });
+  setBusy(el("reviewSave"), false, "Save review");
+  if (error) {
+    showMsg("reviewMsg", error.message, "error");
+    return;
+  }
+  showMsg("reviewMsg", "Saved - thank you!", "ok");
+};
+
 // ---- load the logged-in dashboard ----
 async function refreshSession(){
   const { data: { session } } = await supa.auth.getSession();
@@ -780,6 +851,7 @@ async function refreshSession(){
 
   renderFeatures(entitlement.tiers || {});
   renderThemeSwatches(entitlement.tiers?.allowed_themes || ["Holographic E.V.A."], entitlement.preferred_theme);
+  loadOwnReview(uid);
 }
 
 // ---- Features section: a plain checklist off the tiers embed, no logic
