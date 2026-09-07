@@ -266,6 +266,34 @@
     max-width: 52ch;
   }
 
+  .about-dev{
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    text-align: center;
+  }
+  .about-dev h2{ font-size: 1.4rem; margin-bottom: 16px; }
+  .about-dev p{ color: var(--text-dim); font-size: 0.95rem; margin-bottom: 16px; text-align: left; }
+  .about-dev a.btn{ margin-top: 8px; }
+
+  .reviews{ max-width: 900px; margin: 0 auto; padding: 20px 24px 48px; }
+  .reviews h2{ text-align: center; font-size: 1.4rem; margin-bottom: 28px; }
+  .reviews-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .review-card{
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 18px;
+    background: rgba(255,255,255,0.02);
+  }
+  .review-stars{ color: #ffcf3f; letter-spacing: 2px; margin-bottom: 8px; }
+  .review-body{ color: var(--text-dim); font-size: 0.9rem; margin-bottom: 10px; }
+  .review-author{ font-size: 0.82rem; color: var(--text-faint); }
+  .reviews-empty{ text-align: center; color: var(--text-faint); grid-column: 1 / -1; }
+
   /* ---------------------------------------------------------------
      Download
   --------------------------------------------------------------- */
@@ -415,6 +443,29 @@
     </div>
   </section>
 
+  <section class="about-dev">
+    <h2>Built by one person</h2>
+    <p>A.V.E.N. is a solo project — no team, no company behind it, just me
+      building the thing I wanted to exist. That means updates come in
+      bursts around everything else in life, and it means every bit of
+      support — a download, a review, a donation — actually reaches the
+      person building it, not a company.</p>
+    <p>A.V.E.N. uses your own free Groq API key rather than a shared one,
+      so there's no subscription cost hiding behind the scenes for AI
+      calls — <a href="https://console.groq.com/keys" target="_blank" rel="noopener">get one here</a>,
+      it takes a minute. The paid tiers exist for the extra tools
+      (Office Automation, streamer integrations, extensions) and to help
+      keep this sustainable to keep building.</p>
+    <a class="btn btn-ghost" href="donate.html">Support the project</a>
+  </section>
+
+  <section class="reviews" id="reviewsSection">
+    <h2>What people are saying</h2>
+    <div class="reviews-grid" id="reviewsGrid">
+      <p class="reviews-empty">Loading reviews…</p>
+    </div>
+  </section>
+
   <section class="download">
     <h2>Get it running</h2>
     <p>One installer. It sets itself up.</p>
@@ -456,6 +507,42 @@
         }
       })
       .catch(() => {});
+
+    // Direct PostgREST call rather than loading the full Supabase JS SDK -
+    // this is a single public, read-only GET (RLS already allows anyone
+    // to select from reviews - see reviews.sql), not worth a whole extra
+    // library load for. The anon/publishable key is meant to be public
+    // (see account.html's own copy of it) - it's what RLS protects
+    // against misuse, not the key's secrecy.
+    const REVIEWS_URL = "https://upiadmvxzphegivqszvp.supabase.co/rest/v1/reviews" +
+      "?select=rating,body,account_name&order=created_at.desc&limit=12";
+    const SUPABASE_ANON_KEY = "sb_publishable_iS9do7OPQuY-zEeAFfSrWQ_zA_IAObI";
+
+    fetch(REVIEWS_URL, { headers: { apikey: SUPABASE_ANON_KEY } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((reviews) => {
+        const grid = document.getElementById("reviewsGrid");
+        if (!reviews || reviews.length === 0) {
+          grid.innerHTML = '<p class="reviews-empty">No reviews yet - be the first from your Account page.</p>';
+          return;
+        }
+        grid.innerHTML = reviews.map((r) => `
+          <div class="review-card">
+            <div class="review-stars">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</div>
+            <div class="review-body">${escapeHtml(r.body)}</div>
+            <div class="review-author">— ${escapeHtml(r.account_name)}</div>
+          </div>`).join("");
+      })
+      .catch(() => {
+        document.getElementById("reviewsGrid").innerHTML =
+          '<p class="reviews-empty">Couldn\'t load reviews right now.</p>';
+      });
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
   </script>
 
 </body>
