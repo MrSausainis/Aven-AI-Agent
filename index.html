@@ -321,7 +321,7 @@
   <div class="topbar">
     <div class="brand">
       <span class="brand-mark">A.V.E.N.</span>
-      <span class="brand-sub">v1.2.1 · GUARDIAN OS</span>
+      <span class="brand-sub" id="versionBadge">v1.2.1 · GUARDIAN OS</span>
     </div>
     <div class="topbar-right">
       <a class="signin-link" href="account.html">Sign In</a>
@@ -395,6 +395,16 @@
           accent color.</p>
       </div>
     </div>
+
+    <div class="feature">
+      <div class="feature-glyph">▤</div>
+      <div>
+        <h3>Office work, handled by voice</h3>
+        <p>Merge spreadsheets, remove duplicates, split a file by column, or
+          tidy a messy Downloads folder — just ask. No Excel required, and
+          nothing leaves your machine.</p>
+      </div>
+    </div>
   </section>
 
   <section class="download">
@@ -408,7 +418,7 @@
     <div class="requirements">
       <span>WINDOWS 10/11</span>
       <span>SSD RECOMMENDED</span>
-      <span>~[SIZE] FREE SPACE</span>
+      <span>LIGHTWEIGHT INSTALL</span>
     </div>
   </section>
 
@@ -416,6 +426,23 @@
     <span>A.V.E.N.</span>
     <a href="https://github.com/MrSausainis/Aven-AI-Agent/releases">All releases</a>
   </footer>
+
+  <script>
+    // Same endpoint AVEN's own desktop update-checker already calls
+    // (aven_main.py's _check_for_update_worker) - one source of truth for
+    // "what's the current version" instead of a separately hand-typed
+    // string here that can drift out of sync. The static text above is
+    // left in place on purpose as the fallback if this fetch fails or no
+    // release has been published yet.
+    fetch("https://api.github.com/repos/MrSausainis/Aven-AI-Agent/releases/latest")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && data.tag_name) {
+          document.getElementById("versionBadge").textContent = data.tag_name + " · GUARDIAN OS";
+        }
+      })
+      .catch(() => {});
+  </script>
 
 </body>
 </html>
