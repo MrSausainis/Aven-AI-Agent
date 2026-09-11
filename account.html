@@ -209,8 +209,17 @@
   <a href="index.html" style="color:var(--text-faint); font-size:0.85rem; text-decoration:none;">&larr; back</a>
 </div>
 
+<!-- ============ INITIAL STATE while the session check resolves ============
+     Visible by default (no "hidden") so this - not the login form and not
+     the dashboard - is what paints first. authWrap/brokenWrap/dashShell all
+     start hidden now (see below); showWrap() hides this the moment any of
+     them is shown, so it never reappears once the real state is known. -->
+<div class="center-wrap" id="loadingWrap">
+  <div class="card" style="text-align:center; color:var(--text-dim);">Loading&hellip;</div>
+</div>
+
 <!-- ============ LOGGED OUT: sign up / log in ============ -->
-<div class="center-wrap" id="authWrap">
+<div class="center-wrap hidden" id="authWrap">
   <div class="card" id="authView">
     <h1>Your account</h1>
     <p class="sub">Create an account, or log back in.</p>
@@ -419,6 +428,10 @@ function fadeIn(elOrId){
 // every caller (login, signup, logout, broken-account) goes through the
 // same switch instead of three different pieces of code half-managing it.
 function showWrap(which){
+  // Whatever the caller asked for, the session check has now resolved to a
+  // real, known state - the neutral loading placeholder never has a reason
+  // to still be showing past this point.
+  el("loadingWrap").classList.add("hidden");
   el("authWrap").classList.toggle("hidden", which !== "auth");
   el("brokenWrap").classList.toggle("hidden", which !== "broken");
   el("dashShell").classList.toggle("hidden", which !== "dash");
@@ -802,8 +815,35 @@ el("reviewSave").onclick = async () => {
 
 // ---- load the logged-in dashboard ----
 async function refreshSession(){
-  const { data: { session } } = await supa.auth.getSession();
-  if (!session) return;
+  // BUG FIXED HERE (login page flash): this used to be a bare
+  // `if (!session) return;` with no explicit showWrap() call at all - it
+  // only "worked" because authWrap was visible in the raw HTML by default,
+  // which is exactly what let the login form flash in front of an already-
+  // authenticated user before this resolved. Now that every wrap starts
+  // hidden (see loadingWrap above), the logged-out path has to say so
+  // explicitly, the same way the broken-account and dashboard paths always
+  // already did.
+  //
+  // The session check itself is wrapped here too: getSession() failing
+  // (network hiccup, corrupted local storage) previously had no handling
+  // at all - an unhandled rejection from this fire-and-forget call would
+  // have left the page stuck on the loading placeholder forever, since
+  // nothing would ever call showWrap() to move past it. Deterministic
+  // fallback: if the session can't be verified, treat it as logged out
+  // (never show the dashboard/entitlements when that isn't certain) and
+  // let the user log in normally.
+  let session;
+  try {
+    const result = await supa.auth.getSession();
+    if (result.error) throw result.error;
+    session = result.data.session;
+  } catch (e) {
+    console.error("Session check failed:", e);
+    showWrap("auth");
+    showMsg("authMsg", "Could not verify your session - please log in.", "error");
+    return;
+  }
+  if (!session) { showWrap("auth"); return; }
 
   const uid = session.user.id;
   const { data: profile } = await supa.from("profiles").select("account_name").eq("id", uid).maybeSingle();
