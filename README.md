@@ -1,35 +1,65 @@
 <div align="center">
 
-<!-- Kai įkelsi programos nuotrauką ar GIF'ą į GitHub, ištrink šias rodykles ir atkomentuok apatinę eilutę -->
-<!-- <img src="aven_preview.gif" alt="A.V.E.N. Interface" width="700"/> -->
+A.V.E.N.
 
-# A.V.E.N.
-**A Windows desktop AI assistant — a small always-on overlay for voice, timers, and game widgets, plus a full chat window when you need one.**
+A lightweight Windows AI agent built to understand your PC, remember useful context, and help you get real work done.
 
-[🌍 Live Website](https://mrsausainis.github.io/Aven-AI-Agent/) • [⬇️ Download for Windows](https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe)
+Website · Latest release
 
 </div>
 
----
+About
 
-## 🚀 What it does
+A.V.E.N. is a Windows desktop AI assistant focused on practical PC interaction rather than being another chatbot in a window. It combines a compact always-on-top Dynamic Island interface with a full desktop chat experience, voice control, local tools, memory, and optional local AI.
 
-* ◐ **Unintrusive Overlay:** A pill-shaped interface that shows what's playing, active timers, or listening status. It collapses to a dot the moment there's nothing to say.
-* ◔ **Voice Control:** Cloud-powered for speed, or fully local on your own GPU if you want absolute privacy. No wake-word gimmicks.
-* ◑ **Smart Game Widgets:** Context-aware tools like a CS2 match clock or a star-able notes checklist that only appear when relevant.
-* ◕ **Dynamic Themes:** Five unique visual themes, each with its own animated character and distinct feel—not just a repainted accent color.
-* ▤ **Office Automation:** Merge spreadsheets, remove duplicates, split files, or tidy folders using just your voice.
+The project is designed to stay lightweight while idle and use more expensive AI reasoning only when it is actually needed.
 
-## ⚙️ Requirements
+Highlights
 
-* **OS:** Windows 10 or Windows 11.
-* **Hardware:** An SSD is highly recommended for optimal speed and local AI loading.
-* **AI Core:** Voice chat and AI features require a free Groq API key (no credit card needed). Everything else works out of the box.
+Dynamic Island interface — compact always-on-top status, listening, timer, media, and action feedback without taking over the desktop.
 
-## 👤 Built by One Person
+Voice and manual chat — use A.V.E.N. hands-free or from the main chat window.
 
-A.V.E.N. is a solo project. No corporate team, no hidden subscriptions for core features. It uses your own free API keys, keeping you in full control of your requests. 
+Cloud or local AI — connect supported cloud providers with your own API key, or run an optional local GGUF model on compatible hardware.
 
-## 📌 Status
+PC control — launch and close apps, work with files and folders, inspect active windows and system state, and run supported desktop actions.
 
-**Actively being built** — expect frequent updates and new capabilities.
+Memory and conversations — persistent conversation history plus separate contextual memory designed to surface useful information when relevant.
+
+Spotify and media control — play specific songs or artists and control playback from natural-language requests.
+
+Office and productivity tools — supported spreadsheet, file-management, notes, timer, and workflow actions.
+
+Guardian watchdog — a separate supervision process monitors the desktop app and helps recover from unexpected failures.
+
+Themes and multi-monitor support — semantic themes, smooth UI motion, monitor-aware Dynamic Island placement, and per-monitor behavior.
+
+AI and privacy model
+
+A.V.E.N. does not depend on one AI provider. Cloud AI can use a user-supplied provider key, while local AI is optional and downloaded separately rather than bundled into the installer.
+
+Application settings, memory, sessions, and other user data are stored separately from the installation directory so updates can replace the application without replacing normal user data.
+
+Requirements
+
+Windows 10 or Windows 11
+
+An SSD is recommended.
+
+Cloud AI features require a supported provider/API key.
+
+Local AI is optional and benefits from a capable GPU with sufficient VRAM.
+
+Local model files are not included in the installer.
+
+Install
+
+Download the latest Windows installer from the Releases page and run AVEN-Setup.exe.
+
+A.V.E.N. is currently distributed as an unsigned Windows application, so Microsoft SmartScreen may show a warning on first launch or install.
+
+Project status
+
+A.V.E.N. is under active development. The current focus is release stability, product polish, security, and turning the existing desktop-assistant foundation into a reliable long-term Windows agent platform.
+
+For product information, downloads, account access, and current availability, use the official website.
