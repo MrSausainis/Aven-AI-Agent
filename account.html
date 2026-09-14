@@ -2,227 +2,54 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>A.V.E.N. — your account</title>
-<style>
-  :root{
-    --bg: #04080a; --bg-raised: #0a1216; --bg-card: #0e161a;
-    --border: #183038; --border-soft: #0f2028;
-    --cyan: #00cfff; --cyan-bright: #00ffff;
-    --text: #eaf9ff; --text-dim: #8fb4bf; --text-faint: #5a7480;
-    --red: #ff8a80; --green: #7fe9a0; --amber: #ffcf7a;
-    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  }
-  *{ box-sizing: border-box; }
-  html, body{ height: 100%; }
-  body{
-    margin: 0; min-height: 100vh; color: var(--text);
-    font-family: var(--sans); display: flex; flex-direction: column;
-    background:
-      radial-gradient(ellipse 900px 520px at 50% -10%, rgba(0,207,255,0.09), transparent 60%),
-      radial-gradient(ellipse 700px 400px at 100% 100%, rgba(181,123,255,0.05), transparent 60%),
-      var(--bg);
-    background-attachment: fixed;
-  }
-  a{ color: var(--cyan); }
-  .topbar{
-    width: 100%; padding: 18px 32px; border-bottom: 1px solid var(--border-soft);
-    background: rgba(10,18,22,0.7); backdrop-filter: blur(6px);
-    display: flex; justify-content: space-between; align-items: center;
-    flex: none;
-  }
-  .brand{ font-weight: 700; font-size: 1.05rem; color: var(--cyan-bright); text-decoration: none; }
-
-  /* ---- centered-card layout: sign up / log in / broken-account states ---- */
-  .center-wrap{ width: 100%; max-width: 400px; margin: 0 auto; padding: 60px 20px; flex: 1; }
-  .card{
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
-    padding: 28px 24px;
-    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.5);
-  }
-
-  /* ---- full dashboard layout: sidebar + content, once logged in ---- */
-  .dash-shell{ display: flex; flex: 1; width: 100%; max-width: 1240px; margin: 0 auto; }
-  .dash-sidebar{
-    width: 220px; flex: none; padding: 32px 16px;
-    border-right: 1px solid var(--border-soft);
-    display: flex; flex-direction: column;
-  }
-  .dash-avatar{
-    width: 52px; height: 52px; border-radius: 50%; background: var(--bg-raised);
-    border: 1px solid var(--border); color: var(--cyan-bright);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.3rem; font-weight: 700; margin: 0 auto 10px;
-  }
-  .dash-account-name{ text-align: center; font-size: 0.9rem; color: var(--text-dim); margin-bottom: 28px; word-break: break-word; }
-  .dash-nav{ display: flex; flex-direction: column; gap: 2px; flex: 1; }
-  .dash-nav-item{
-    padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; color: var(--text-dim);
-    cursor: pointer; user-select: none;
-  }
-  .dash-nav-item:hover{ background: var(--bg-raised); color: var(--text); }
-  .dash-nav-item.active{ background: rgba(0,207,255,0.12); color: var(--cyan-bright); font-weight: 600; }
-
-  .dash-main{ flex: 1; padding: 40px 48px; max-width: 820px; }
-  .dash-section{ display: none; }
-  .dash-section.active{ display: block; }
-  .dash-main h1{ font-size: 1.4rem; font-weight: 600; margin: 0 0 22px; }
-
-  /* ---- Features section: what the current tier includes ---- */
-  .feature-list{ display: flex; flex-direction: column; gap: 2px; }
-  .feature-row{
-    display: flex; align-items: center; gap: 12px; padding: 13px 4px;
-    border-top: 1px solid var(--border-soft);
-  }
-  .feature-row:first-child{ border-top: none; }
-  .feature-mark{
-    width: 22px; height: 22px; border-radius: 50%; flex: none;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.8rem; font-weight: 700;
-  }
-  .feature-row.on .feature-mark{ background: rgba(127,233,160,0.14); color: var(--green); }
-  .feature-row.off .feature-mark{ background: rgba(90,116,128,0.14); color: var(--text-faint); }
-  .feature-row .feature-name{ flex: 1; font-size: 0.95rem; }
-  .feature-row.off .feature-name{ color: var(--text-faint); }
-  .feature-note{
-    margin-top: 22px; padding: 14px 16px; border-radius: 10px;
-    background: var(--bg-raised); border: 1px solid var(--border-soft);
-    font-size: 0.85rem; color: var(--text-dim);
-  }
-
-  /* ---- Theme picker (Settings section) ---- */
-  .theme-swatches{ display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
-  .theme-swatch{
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    width: 84px; padding: 10px 6px 8px; border-radius: 12px;
-    border: 1px solid var(--border-soft); background: transparent; cursor: pointer;
-  }
-  .theme-swatch:hover{ border-color: var(--border); }
-  .theme-swatch-dot{
-    width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--dot-accent, var(--cyan));
-    background: var(--dot-bg, var(--bg-raised));
-  }
-  .theme-swatch-label{ font-size: 0.72rem; color: var(--text-dim); text-align: center; line-height: 1.2; }
-  .theme-swatch.active{ border-color: var(--cyan); background: rgba(0,207,255,0.08); }
-  .theme-swatch.active .theme-swatch-label{ color: var(--cyan-bright); font-weight: 600; }
-  .theme-swatch.locked{ opacity: 0.45; cursor: default; }
-  .theme-swatch.locked:hover{ border-color: var(--border-soft); }
-  .theme-swatch-lock{ font-size: 0.65rem; color: var(--amber); }
-
-  h1{ font-size: 1.3rem; font-weight: 600; margin: 0 0 4px; }
-  h2.section-title{
-    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
-    color: var(--text-faint); margin: 0 0 12px; font-weight: 600;
-  }
-  .sub{ color: var(--text-dim); font-size: 0.9rem; margin: 0 0 22px; }
-
-  .tabs{ display: flex; gap: 4px; margin-bottom: 22px; background: var(--bg-raised); border-radius: 10px; padding: 4px; }
-  .tab{
-    flex: 1; text-align: center; padding: 9px 0; border-radius: 8px; cursor: pointer;
-    font-size: 0.88rem; color: var(--text-faint); user-select: none;
-  }
-  .tab.active{ background: var(--cyan); color: #04141a; font-weight: 600; }
-
-  label{ display: block; font-size: 0.82rem; color: var(--text-dim); margin: 14px 0 6px; }
-  input{
-    width: 100%; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--bg-raised); color: var(--text); font-size: 0.95rem; font-family: var(--sans);
-  }
-  input:focus{ outline: 2px solid var(--cyan); outline-offset: 1px; }
-
-  textarea{
-    width: 100%; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--bg-raised); color: var(--text); font-size: 0.95rem; font-family: var(--sans);
-    resize: vertical;
-  }
-  textarea:focus{ outline: 2px solid var(--cyan); outline-offset: 1px; }
-
-  .star-picker{ font-size: 1.6rem; letter-spacing: 4px; margin-bottom: 12px; }
-  .star-picker span{ cursor: pointer; color: var(--border); transition: color 0.1s; }
-  .star-picker span.filled{ color: #ffcf3f; }
-
-  button.primary{
-    padding: 12px 22px; border-radius: 10px; border: none;
-    background: var(--cyan); color: #04141a; font-weight: 600; font-size: 0.95rem; cursor: pointer;
-  }
-  button.primary.block{ width: 100%; margin-top: 20px; }
-  button.primary:hover{ background: var(--cyan-bright); }
-  button.primary:disabled{ opacity: 0.5; cursor: default; }
-  button.ghost{
-    padding: 11px 22px; border-radius: 10px;
-    background: transparent; border: 1px solid var(--border); color: var(--text);
-    font-size: 0.9rem; cursor: pointer;
-  }
-  button.ghost.block{ width: 100%; margin-top: 10px; }
-  button.ghost:hover{ border-color: var(--cyan); }
-  button.ghost:disabled{ opacity: 0.5; cursor: default; }
-  .row{ display: flex; gap: 8px; align-items: flex-start; }
-  .row input{ flex: 1; }
-
-  .msg{ margin-top: 14px; font-size: 0.85rem; padding: 10px 12px; border-radius: 8px; display: none; }
-  .msg.error{ background: rgba(255,138,128,0.1); color: var(--red); border: 1px solid rgba(255,138,128,0.3); }
-  .msg.ok{ background: rgba(127,233,160,0.1); color: var(--green); border: 1px solid rgba(127,233,160,0.3); }
-  .msg.warn{ background: rgba(255,207,122,0.1); color: var(--amber); border: 1px solid rgba(255,207,122,0.3); }
-
-  .kv{ display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--border-soft); font-size: 0.92rem; }
-  .kv:first-of-type{ border-top: none; }
-  .kv span:first-child{ color: var(--text-faint); }
-
-  .hidden{ display: none !important; }
-
-  @keyframes fadeSlideIn{
-    from{ opacity: 0; transform: translateY(8px); }
-    to{ opacity: 1; transform: translateY(0); }
-  }
-  .fade-in{ animation: fadeSlideIn 0.32s ease; }
-  @media (prefers-reduced-motion: reduce){
-    .fade-in{ animation: none; }
-  }
-
-  /* Subtle press/hover feedback so clicks feel like they landed on
-     something, rather than an instant state swap with nothing in
-     between - this is what "too snappy" was actually describing. */
-  button, .tab, .dash-nav-item{
-    transition: transform 0.12s ease, background-color 0.15s ease,
-                border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-  }
-  button:active{ transform: scale(0.97); }
-  .card{ transition: box-shadow 0.25s ease; }
-
-  @media (max-width: 720px){
-    .dash-shell{ flex-direction: column; }
-    .dash-sidebar{
-      width: 100%; border-right: none; border-bottom: 1px solid var(--border-soft);
-      flex-direction: row; align-items: center; padding: 16px 20px; gap: 16px;
-    }
-    .dash-avatar{ margin: 0; width: 40px; height: 40px; font-size: 1rem; }
-    .dash-account-name{ margin: 0; text-align: left; }
-    .dash-nav{ flex-direction: row; }
-    .dash-main{ padding: 28px 20px; max-width: none; }
-  }
-</style>
+<meta name="description" content="Manage your A.V.E.N. account, plan access, desktop theme and security settings." />
+<meta name="theme-color" content="#05080d" />
+<meta name="robots" content="noindex,nofollow" />
+<meta property="og:title" content="A.V.E.N. Account" />
+<meta property="og:description" content="Manage plan access and settings for the A.V.E.N. Windows desktop assistant." />
+<title>A.V.E.N. Account</title>
+<link rel="stylesheet" href="site.css" />
 </head>
-<body>
+<body class="account-page">
+<header class="site-header">
+  <div class="shell">
+    <a class="brand" href="index.html" aria-label="A.V.E.N. home">
+      <span class="brand-mark">AV</span>
+      <span class="brand-word">A.V.E.N.</span>
+      <span class="brand-version">ACCOUNT</span>
+    </a>
+    <div class="header-actions">
+      <a class="btn btn-quiet" href="index.html">Back to product</a>
+      <a class="btn btn-secondary" href="https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe">Download</a>
+    </div>
+  </div>
+</header>
 
-<div class="topbar">
-  <a class="brand" href="index.html">A.V.E.N.</a>
-  <a href="index.html" style="color:var(--text-faint); font-size:0.85rem; text-decoration:none;">&larr; back</a>
+<div class="account-loader" id="loadingWrap">
+  <div class="loader-box">
+    <div class="loader-ring"></div>
+    <strong>Checking your session</strong>
+    <div style="margin-top:7px;font-size:.8rem;">Loading your A.V.E.N. account securely.</div>
+  </div>
 </div>
 
-<!-- ============ INITIAL STATE while the session check resolves ============
-     Visible by default (no "hidden") so this - not the login form and not
-     the dashboard - is what paints first. authWrap/brokenWrap/dashShell all
-     start hidden now (see below); showWrap() hides this the moment any of
-     them is shown, so it never reappears once the real state is known. -->
-<div class="center-wrap" id="loadingWrap">
-  <div class="card" style="text-align:center; color:var(--text-dim);">Loading&hellip;</div>
-</div>
+<div class="auth-layout hidden" id="authWrap">
+  <section class="auth-context">
+    <div class="eyebrow"><span class="eyebrow-line"></span><span>Your A.V.E.N. account</span></div>
+    <h1>One place for access, plans and preferences.</h1>
+    <p>The desktop app can be tried without an account. Sign in when you want plan access, synced appearance preferences, reviews, or a desktop session connected to your account.</p>
+    <div class="auth-benefits">
+      <div class="auth-benefit"><span>Plan</span><span>See exactly which features your current tier unlocks and upgrade when you actually need more.</span></div>
+      <div class="auth-benefit"><span>Desktop</span><span>Sign in from A.V.E.N. without copying passwords or API keys into the website.</span></div>
+      <div class="auth-benefit"><span>Appearance</span><span>Your chosen account theme can carry back to the desktop app on the next login.</span></div>
+    </div>
+  </section>
 
-<!-- ============ LOGGED OUT: sign up / log in ============ -->
-<div class="center-wrap hidden" id="authWrap">
-  <div class="card" id="authView">
-    <h1>Your account</h1>
-    <p class="sub">Create an account, or log back in.</p>
+  <section class="auth-card" id="authView">
+    <h2 id="authTitle">Create your account</h2>
+    <p class="sub" id="authSubtitle">Use it for plan access and synced account preferences.</p>
 
     <div class="tabs">
       <div class="tab active" id="tabSignup">Sign up</div>
@@ -231,139 +58,184 @@
 
     <div id="signupForm">
       <label for="su_name">Account name</label>
-      <input id="su_name" type="text" autocomplete="username" placeholder="e.g. shadowfox">
+      <input id="su_name" type="text" autocomplete="username" placeholder="Choose a public account name" />
       <label for="su_email">Email</label>
-      <input id="su_email" type="email" autocomplete="email" placeholder="you@example.com">
+      <input id="su_email" type="email" autocomplete="email" placeholder="you@example.com" />
       <label for="su_pass">Password</label>
-      <input id="su_pass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
-      <button class="primary block" id="su_submit">Create account</button>
-      <button class="ghost block hidden" id="su_resend">Resend confirmation email</button>
+      <input id="su_pass" type="password" autocomplete="new-password" placeholder="At least 6 characters" />
+      <button class="btn btn-primary block" id="su_submit" style="margin-top:18px;">Create account</button>
+      <button class="btn btn-secondary block hidden" id="su_resend" style="margin-top:9px;">Resend confirmation email</button>
     </div>
 
     <div id="loginForm" class="hidden">
       <label for="li_email">Email</label>
-      <input id="li_email" type="email" autocomplete="email" placeholder="you@example.com">
+      <input id="li_email" type="email" autocomplete="email" placeholder="you@example.com" />
       <label for="li_pass">Password</label>
-      <input id="li_pass" type="password" autocomplete="current-password" placeholder="Your password">
-      <button class="primary block" id="li_submit">Log in</button>
-      <a href="#" id="forgotLink" style="display:block; text-align:center; margin-top:14px; font-size:0.85rem;">Forgot your password?</a>
+      <input id="li_pass" type="password" autocomplete="current-password" placeholder="Your password" />
+      <button class="btn btn-primary block" id="li_submit" style="margin-top:18px;">Log in</button>
+      <a class="form-link" href="#" id="forgotLink">Forgot your password?</a>
     </div>
 
-    <!-- ============ PASSWORD RESET REQUEST ============ -->
     <div id="forgotForm" class="hidden">
+      <h2>Reset your password</h2>
+      <p class="sub">We will send a recovery link if the email belongs to an account.</p>
       <label for="forgot_email">Email</label>
-      <input id="forgot_email" type="email" autocomplete="email" placeholder="you@example.com">
-      <button class="primary block" id="forgot_submit">Send reset link</button>
-      <a href="#" id="backToLoginLink" style="display:block; text-align:center; margin-top:14px; font-size:0.85rem;">Back to log in</a>
+      <input id="forgot_email" type="email" autocomplete="email" placeholder="you@example.com" />
+      <button class="btn btn-primary block" id="forgot_submit" style="margin-top:18px;">Send reset link</button>
+      <a class="form-link" href="#" id="backToLoginLink">Back to log in</a>
     </div>
 
-    <!-- ============ SET NEW PASSWORD (after clicking the emailed link) ============ -->
     <div id="recoveryForm" class="hidden">
-      <h1>Set a new password</h1>
-      <p class="sub">You followed a password reset link - pick a new password below.</p>
+      <h2>Set a new password</h2>
+      <p class="sub">Choose a new password for this account.</p>
       <label for="recovery_pass">New password</label>
-      <input id="recovery_pass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
-      <button class="primary block" id="recovery_submit">Set new password</button>
+      <input id="recovery_pass" type="password" autocomplete="new-password" placeholder="At least 6 characters" />
+      <button class="btn btn-primary block" id="recovery_submit" style="margin-top:18px;">Set new password</button>
     </div>
 
     <div class="msg" id="authMsg"></div>
-  </div>
-</div>
-
-<!-- ============ LOGGED IN, BUT NO PROFILE/ENTITLEMENT ROW ============ -->
-<div class="center-wrap hidden" id="brokenWrap">
-  <div class="card" id="brokenView">
-    <h1>Account data missing</h1>
-    <p class="sub">
-      You're logged in, but this account has no profile or subscription
-      data attached to it. This usually means it was deleted directly
-      from a database table rather than removed as a login.
-    </p>
-    <div class="msg warn" style="display:block;">
-      To clean this up: log out, then in the Supabase dashboard go to
-      <strong>Authentication &rarr; Users</strong> (not Table Editor) and
-      delete this user from there - that removes it properly. Then sign
-      up again with a fresh email.
+    <div class="auth-bottom">
+      <span>Basic app use does not require an account.</span>
+      <a href="index.html#before-download">Why sign in?</a>
     </div>
-    <button class="ghost block" id="brokenLogoutBtn" style="margin-top:16px;">Log out</button>
-  </div>
+  </section>
 </div>
 
-<!-- ============ LOGGED IN: real dashboard, sidebar + sections ============ -->
-<div class="dash-shell hidden" id="dashShell">
-  <aside class="dash-sidebar">
-    <div class="dash-avatar" id="dashAvatar">?</div>
-    <div class="dash-account-name" id="dashName">&ndash;</div>
-    <nav class="dash-nav">
+<div class="broken-wrap hidden" id="brokenWrap">
+  <section class="broken-card" id="brokenView">
+    <div class="dash-kicker">Account issue</div>
+    <h1>We could not load your account data.</h1>
+    <p>Your login is valid, but the profile or plan record is unavailable. Log out and try again. If it keeps happening, report it through the project support page.</p>
+    <div class="msg warn" style="display:block;">Your desktop app data has not been changed by this page.</div>
+    <div style="display:flex;gap:9px;margin-top:18px;flex-wrap:wrap;">
+      <button class="btn btn-secondary" id="brokenLogoutBtn">Log out</button>
+      <a class="btn btn-primary" href="https://github.com/MrSausainis/Aven-AI-Agent/issues">Open support</a>
+    </div>
+  </section>
+</div>
+
+<div class="dashboard hidden" id="dashShell">
+  <aside class="dashboard-sidebar">
+    <div class="account-chip">
+      <div class="avatar" id="dashAvatar">?</div>
+      <div class="account-name" id="dashName">Account</div>
+      <div class="account-tier" id="sidebarTier">Loading plan…</div>
+    </div>
+    <nav class="dashboard-nav" aria-label="Account sections">
       <div class="dash-nav-item active" data-section="overview">Overview</div>
-      <div class="dash-nav-item" data-section="subscription">Subscription</div>
-      <div class="dash-nav-item" data-section="features">Features</div>
-      <div class="dash-nav-item" data-section="settings">Settings</div>
+      <div class="dash-nav-item" data-section="plan">Plan</div>
+      <div class="dash-nav-item" data-section="features">App access</div>
+      <div class="dash-nav-item" data-section="appearance">Appearance</div>
+      <div class="dash-nav-item" data-section="account">Account & security</div>
+      <div class="dash-nav-item" data-section="feedback">Feedback</div>
     </nav>
-    <button class="ghost" id="logoutBtn">Log out</button>
+    <div class="sidebar-foot">
+      <a class="btn btn-quiet" href="index.html">Product page</a>
+      <button class="btn btn-quiet" id="logoutBtn">Log out</button>
+    </div>
   </aside>
 
-  <main class="dash-main">
+  <main class="dashboard-main">
     <section class="dash-section active" id="section-overview">
-      <h1>Overview</h1>
-      <p class="sub">Everything you need to get A.V.E.N. running.</p>
-      <button class="primary block" id="downloadBtn">Download for Windows</button>
+      <div class="dash-head">
+        <div>
+          <div class="dash-kicker">Account overview</div>
+          <h1>Your A.V.E.N. setup</h1>
+          <p>Plan, app access and the settings that matter to the desktop app.</p>
+        </div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card"><div class="summary-label">Account</div><div class="summary-value" id="overviewName">—</div><div class="summary-note" id="overviewEmail">—</div></div>
+        <div class="summary-card"><div class="summary-label">Plan</div><div class="summary-value" id="overviewPlan">—</div><div class="summary-note" id="overviewPlanNote">Checking access</div></div>
+        <div class="summary-card"><div class="summary-label">Theme</div><div class="summary-value" id="overviewTheme">—</div><div class="summary-note">Synced on your next desktop login</div></div>
+      </div>
+
+      <div class="action-band">
+        <div><h3>Need the latest desktop build?</h3><p>Download the official installer directly from the GitHub release.</p></div>
+        <div class="actions">
+          <button class="btn btn-secondary" data-open-section="appearance">Appearance</button>
+          <button class="btn btn-primary" id="downloadBtn">Download A.V.E.N.</button>
+        </div>
+      </div>
       <div class="msg" id="dashMsg"></div>
+
+      <div class="panel">
+        <h3>What your account does</h3>
+        <p class="panel-lede">The account is for entitlements and preferences. Your personal API keys and local AI model files stay in the desktop app, not on this page.</p>
+        <div class="kv"><span>Basic desktop use</span><span>Available without an account</span></div>
+        <div class="kv"><span>Paid feature access</span><span>Connected to this account</span></div>
+        <div class="kv"><span>Theme preference</span><span>Synced on login</span></div>
+      </div>
     </section>
 
-    <section class="dash-section" id="section-subscription">
-      <h1>Subscription</h1>
-      <div class="kv"><span>Tier</span><span id="dashTier">&ndash;</span></div>
-      <div class="kv"><span>Status</span><span id="dashSource">&ndash;</span></div>
-      <button class="ghost block" id="upgradeBtn" style="margin-top:20px;">Upgrade</button>
-
-      <div id="upgradeOptions" class="hidden" style="margin-top:14px;">
-        <button class="primary block" id="upgradeMonthlyBtn">Monthly &mdash; &euro;2/mo</button>
-        <button class="ghost block" id="upgradeAnnualBtn">Annual &mdash; &euro;20/yr</button>
+    <section class="dash-section" id="section-plan">
+      <div class="dash-head"><div><div class="dash-kicker">Plan</div><h1>Subscription</h1><p>See the current entitlement before you pay for anything else.</p></div></div>
+      <div class="panel">
+        <div class="kv"><span>Current tier</span><span id="dashTier">—</span></div>
+        <div class="kv"><span>Access source</span><span id="dashSource">—</span></div>
+        <div class="kv"><span>Valid until</span><span id="dashExpires">No fixed expiry</span></div>
+        <button class="btn btn-secondary block" id="upgradeBtn" style="margin-top:16px;">Show upgrade options</button>
+        <div id="upgradeOptions" class="hidden" style="margin-top:10px;display:grid;gap:8px;">
+          <button class="btn btn-primary block" id="upgradeMonthlyBtn">Monthly — €2 / month</button>
+          <button class="btn btn-secondary block" id="upgradeAnnualBtn">Annual — €20 / year</button>
+        </div>
+        <div class="msg" id="upgradeMsg"></div>
       </div>
-      <div class="msg" id="upgradeMsg"></div>
+      <div class="panel">
+        <h3>Billing</h3>
+        <p class="panel-lede">Checkout is handled by Stripe. A.V.E.N. does not store card details on this website.</p>
+      </div>
     </section>
 
     <section class="dash-section" id="section-features">
-      <h1>Features</h1>
-      <p class="sub">What's included in your current tier.</p>
-      <div class="feature-list" id="featuresList">
-        <div class="feature-row off"><span class="feature-mark">&ndash;</span><span class="feature-name">Loading...</span></div>
-      </div>
+      <div class="dash-head"><div><div class="dash-kicker">App access</div><h1>Features on your tier</h1><p>This reflects the entitlement A.V.E.N. receives when you sign in.</p></div></div>
+      <div class="feature-list" id="featuresList"><div class="feature-row off"><span class="feature-mark">—</span><span class="feature-name">Loading…</span></div></div>
       <div class="feature-note" id="futureUpdatesNote"></div>
     </section>
 
-    <section class="dash-section" id="section-settings">
-      <h1>Settings</h1>
-
-      <h2 class="section-title">Account name</h2>
-      <div class="row">
-        <input id="settingsName" type="text">
-        <button class="primary" id="settingsSave">Save</button>
+    <section class="dash-section" id="section-appearance">
+      <div class="dash-head"><div><div class="dash-kicker">Appearance</div><h1>Desktop theme</h1><p>Choose from the themes included in your current tier.</p></div></div>
+      <div class="panel">
+        <div class="theme-swatches" id="themeSwatches"></div>
+        <div class="msg" id="themeMsg"></div>
       </div>
-      <div class="msg" id="settingsMsg"></div>
+    </section>
 
-      <h2 class="section-title" style="margin-top:32px;">Theme</h2>
-      <p class="sub" style="margin-bottom:14px;">Carries over to the desktop app on your next login.</p>
-      <div class="theme-swatches" id="themeSwatches"></div>
-      <div class="msg" id="themeMsg"></div>
-
-      <h2 class="section-title" style="margin-top:32px;">Password</h2>
-      <label for="settingsNewPass">New password</label>
-      <input id="settingsNewPass" type="password" autocomplete="new-password" placeholder="At least 6 characters">
-      <label for="settingsNewPass2">Confirm new password</label>
-      <input id="settingsNewPass2" type="password" autocomplete="new-password" placeholder="Type it again">
-      <button class="primary block" id="settingsPassSave" style="margin-top:16px;">Change password</button>
-      <div class="msg" id="settingsPassMsg"></div>
-
-      <h2 class="section-title" style="margin-top:32px;">Leave a review</h2>
-      <p class="sub" style="margin-bottom:14px;">Shown publicly on the homepage under your account name. One per account - saving again edits your existing review.</p>
-      <div class="star-picker" id="starPicker">
-        <span data-star="1">&#9733;</span><span data-star="2">&#9733;</span><span data-star="3">&#9733;</span><span data-star="4">&#9733;</span><span data-star="5">&#9733;</span>
+    <section class="dash-section" id="section-account">
+      <div class="dash-head"><div><div class="dash-kicker">Account & security</div><h1>Profile and password</h1><p>Keep the public account name and login credentials current.</p></div></div>
+      <div class="panel">
+        <div class="section-title">Account name</div>
+        <div class="inline-row">
+          <div><label for="settingsName">Public account name</label><input id="settingsName" type="text" /></div>
+          <button class="btn btn-primary" id="settingsSave">Save</button>
+        </div>
+        <div class="msg" id="settingsMsg"></div>
       </div>
-      <textarea id="reviewBody" maxlength="500" rows="3" placeholder="What's your experience with A.V.E.N. been like?"></textarea>
-      <button class="primary block" id="reviewSave" style="margin-top:10px;">Save review</button>
-      <div class="msg" id="reviewMsg"></div>
+      <div class="panel">
+        <div class="section-title">Password</div>
+        <div class="stack">
+          <div><label for="settingsNewPass">New password</label><input id="settingsNewPass" type="password" autocomplete="new-password" placeholder="At least 6 characters" /></div>
+          <div><label for="settingsNewPass2">Confirm password</label><input id="settingsNewPass2" type="password" autocomplete="new-password" placeholder="Type it again" /></div>
+          <button class="btn btn-primary" id="settingsPassSave">Change password</button>
+        </div>
+        <div class="msg" id="settingsPassMsg"></div>
+      </div>
+    </section>
+
+    <section class="dash-section" id="section-feedback">
+      <div class="dash-head"><div><div class="dash-kicker">Feedback</div><h1>Leave a review</h1><p>Your review appears on the homepage with your account name. Saving again edits the same review.</p></div></div>
+      <div class="panel">
+        <div class="star-picker" id="starPicker"><span data-star="1">★</span><span data-star="2">★</span><span data-star="3">★</span><span data-star="4">★</span><span data-star="5">★</span></div>
+        <textarea id="reviewBody" maxlength="500" rows="4" placeholder="What has your experience with A.V.E.N. been like?"></textarea>
+        <button class="btn btn-primary" id="reviewSave" style="margin-top:10px;">Save review</button>
+        <div class="msg" id="reviewMsg"></div>
+      </div>
+      <div class="panel">
+        <h3>Need help instead?</h3>
+        <p class="panel-lede">Use the public project issue tracker for bugs and reproducible problems.</p>
+        <a class="btn btn-secondary" href="https://github.com/MrSausainis/Aven-AI-Agent/issues">Open support</a>
+      </div>
     </section>
   </main>
 </div>
@@ -383,20 +255,79 @@ const SUPABASE_ANON_KEY = "sb_publishable_iS9do7OPQuY-zEeAFfSrWQ_zA_IAObI";
 const DOWNLOAD_URL = "https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe";
 const RESEND_COOLDOWN_SECONDS = 30;
 
-// Colors lifted directly from the real app's THEMES dict (aven_main.py) -
-// same convention index.html already uses for its own palette. Order here
-// is display order for the swatches, not tied to any tier ranking.
 const THEME_COLORS = {
-  "Holographic E.V.A.": { bg: "#04080a", accent: "#00cfff" },
-  "Midnight Purple":    { bg: "#08060f", accent: "#b57bff" },
-  "Crimson Core":       { bg: "#0a0406", accent: "#e63946" },
-  "Phantom Silver":     { bg: "#111111", accent: "#e6e6e6" },
-  "Monochrome":         { bg: "#000000", accent: "#ffffff" },
+  "Midnight Purple": { bg: "#08060f", accent: "#b57bff" },
+  "Obsidian":        { bg: "#111111", accent: "#e6e6e6" },
+  "Frost":           { bg: "#04080a", accent: "#00cfff" },
+  "Crimson":         { bg: "#0a0406", accent: "#e63946" },
+  "Emerald":         { bg: "#05100b", accent: "#39d98a" },
+  "Monochrome":      { bg: "#000000", accent: "#ffffff" },
+  "OLED":            { bg: "#000000", accent: "#b8c2cc" },
 };
 const ALL_THEME_NAMES = Object.keys(THEME_COLORS);
+const LEGACY_THEME_ALIASES = {
+  "Holographic E.V.A.": "Frost",
+  "Crimson Core": "Crimson",
+  "Phantom Silver": "Obsidian",
+};
 
-const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const PAGE_PARAMS = new URLSearchParams(window.location.search);
+const DESKTOP_LOGIN_MODE = PAGE_PARAMS.has("desktop_callback");
+
+const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: DESKTOP_LOGIN_MODE
+    ? { persistSession: false, autoRefreshToken: false }
+    : { persistSession: true, autoRefreshToken: true },
+});
 const el = (id) => document.getElementById(id);
+
+if (DESKTOP_LOGIN_MODE) {
+  el("authTitle").textContent = "Connect A.V.E.N. desktop";
+  el("authSubtitle").textContent = "Log in here to create a separate secure desktop session.";
+}
+
+function validatedDesktopCallback(rawCallback, expectedState, requireState) {
+  if (!rawCallback) return null;
+  try {
+    const target = new URL(rawCallback);
+    const host = target.hostname.toLowerCase();
+    const loopback = host === "127.0.0.1" || host === "localhost";
+    const port = Number(target.port || 0);
+    if (target.protocol !== "http:" || !loopback || target.pathname !== "/callback" ||
+        !Number.isInteger(port) || port < 1 || port > 65535 ||
+        target.username || target.password) {
+      return null;
+    }
+    if (requireState && (!expectedState || target.searchParams.get("state") !== expectedState)) {
+      return null;
+    }
+    return target;
+  } catch (_) {
+    return null;
+  }
+}
+
+function postDesktopSession(target, state, session, accountName) {
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = target.origin + target.pathname;
+  form.style.display = "none";
+  const fields = {
+    state,
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+    account_name: accountName,
+  };
+  Object.entries(fields).forEach(([name, value]) => {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value || "";
+    form.appendChild(input);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
 
 function showMsg(id, text, kind){
   const box = el(id);
@@ -410,11 +341,6 @@ function setBusy(btn, busy, label){
   if (label !== undefined) btn.textContent = label;
 }
 
-// Retriggers a CSS animation on an element that already has the class -
-// just adding a class again does nothing if it's already present, since
-// the browser has no "it changed" signal to restart from. Removing it,
-// forcing a reflow (reading offsetWidth), then re-adding is the standard
-// way to make a repeatable entrance animation actually replay every time.
 function fadeIn(elOrId){
   const target = typeof elOrId === "string" ? el(elOrId) : elOrId;
   if (!target) return;
@@ -423,14 +349,7 @@ function fadeIn(elOrId){
   target.classList.add("fade-in");
 }
 
-// Swaps which of the three top-level wraps is visible - the auth card, the
-// broken-account card, or the real dashboard shell. Kept in one place so
-// every caller (login, signup, logout, broken-account) goes through the
-// same switch instead of three different pieces of code half-managing it.
 function showWrap(which){
-  // Whatever the caller asked for, the session check has now resolved to a
-  // real, known state - the neutral loading placeholder never has a reason
-  // to still be showing past this point.
   el("loadingWrap").classList.add("hidden");
   el("authWrap").classList.toggle("hidden", which !== "auth");
   el("brokenWrap").classList.toggle("hidden", which !== "broken");
@@ -439,7 +358,6 @@ function showWrap(which){
   fadeIn(shown);
 }
 
-// ---- dashboard sidebar navigation ----
 document.querySelectorAll(".dash-nav-item").forEach((item) => {
   item.onclick = () => {
     document.querySelectorAll(".dash-nav-item").forEach((i) => i.classList.remove("active"));
@@ -451,7 +369,14 @@ document.querySelectorAll(".dash-nav-item").forEach((item) => {
   };
 });
 
-// ---- tab switching (signup/login) ----
+function openDashboardSection(name){
+  const item = document.querySelector(`.dash-nav-item[data-section="${name}"]`);
+  if (item) item.click();
+}
+document.querySelectorAll("[data-open-section]").forEach((btn) => {
+  btn.onclick = () => openDashboardSection(btn.dataset.openSection);
+});
+
 el("tabSignup").onclick = () => {
   el("tabSignup").classList.add("active");
   el("tabLogin").classList.remove("active");
@@ -471,7 +396,6 @@ el("tabLogin").onclick = () => {
   hideMsg("authMsg");
 };
 
-// ---- forgot password: request link, then set a new one after following it ----
 el("forgotLink").onclick = (e) => {
   e.preventDefault();
   hideMsg("authMsg");
@@ -527,11 +451,6 @@ el("recovery_submit").onclick = async () => {
   await refreshSession();
 };
 
-// Supabase fires this when the URL carries a password-recovery token (i.e.
-// the user just clicked the emailed reset link) - show the "set a new
-// password" form instead of the normal login card. This is a real, live
-// session (recovery links log you in temporarily to allow the change), so
-// refreshSession() after setting the new password works normally.
 supa.auth.onAuthStateChange((event) => {
   if (event === "PASSWORD_RECOVERY") {
     showWrap("auth");
@@ -542,8 +461,6 @@ supa.auth.onAuthStateChange((event) => {
   }
 });
 
-// ---- resend confirmation, with a 30s cooldown so it can't be hammered
-// into hitting Supabase's own email rate limit even faster ----
 let lastSignupEmail = null;
 let resendTimer = null;
 
@@ -582,7 +499,6 @@ el("su_resend").onclick = async () => {
   startResendCooldown();
 };
 
-// ---- sign up ----
 el("su_submit").onclick = async () => {
   hideMsg("authMsg");
   const account_name = el("su_name").value.trim();
@@ -629,7 +545,6 @@ el("su_submit").onclick = async () => {
   }
 };
 
-// ---- log in ----
 el("li_submit").onclick = async () => {
   hideMsg("authMsg");
   const email = el("li_email").value.trim();
@@ -653,9 +568,8 @@ el("li_submit").onclick = async () => {
   await refreshSession();
 };
 
-// ---- log out ----
 async function doLogout(){
-  await supa.auth.signOut();
+  await supa.auth.signOut({ scope: "local" });
   showWrap("auth");
 }
 el("logoutBtn").onclick = doLogout;
@@ -663,30 +577,19 @@ el("brokenLogoutBtn").onclick = doLogout;
 
 el("downloadBtn").onclick = () => { window.location.href = DOWNLOAD_URL; };
 
-// Real Stripe Price IDs go here once created in the Stripe dashboard -
-// Products -> [tier] -> the Price's own ID (starts "price_..."), NOT the
-// Product ID (starts "prod_..."). Each Price also needs metadata
-// tier_id=<the matching tiers.tier_id value> set in Stripe - that's what
-// the stripe-webhook function reads to know which AVEN tier to grant.
-const STRIPE_PRICE_IDS = {
-  monthly: "price_1UCPzSJ78TGxjoZzD8Pc4ppZ",
-  annual: "price_1UD87kJ78TGxjoZzyIHNEkQG",
-};
-
 el("upgradeBtn").onclick = () => {
   el("upgradeOptions").classList.toggle("hidden");
 };
 
 async function startCheckout(tierKey) {
   hideMsg("upgradeMsg");
-  const priceId = STRIPE_PRICE_IDS[tierKey];
-  if (!priceId || priceId.startsWith("PUT-YOUR-")) {
-    showMsg("upgradeMsg", "Pricing isn't configured yet.", "error");
+  if (tierKey !== "monthly" && tierKey !== "annual") {
+    showMsg("upgradeMsg", "Unknown plan.", "error");
     return;
   }
   showMsg("upgradeMsg", "Redirecting to checkout...", "ok");
   const { data, error } = await supa.functions.invoke("create-checkout", {
-    body: { price_id: priceId },
+    body: { plan: tierKey },
   });
   if (error) {
     showMsg("upgradeMsg", "Couldn't start checkout: " + error.message, "error");
@@ -701,7 +604,6 @@ async function startCheckout(tierKey) {
 el("upgradeMonthlyBtn").onclick = () => startCheckout("monthly");
 el("upgradeAnnualBtn").onclick = () => startCheckout("annual");
 
-// ---- settings: rename account_name, same uniqueness handling as signup ----
 el("settingsSave").onclick = async () => {
   hideMsg("settingsMsg");
   const newName = el("settingsName").value.trim();
@@ -728,9 +630,6 @@ el("settingsSave").onclick = async () => {
   el("dashAvatar").textContent = newName.charAt(0).toUpperCase();
 };
 
-// ---- settings: change password. Supabase's updateUser() only needs an
-// active session, not the old password - that's standard for this API
-// (the session itself already proves who you are), not a shortcut I took.
 el("settingsPassSave").onclick = async () => {
   hideMsg("settingsPassMsg");
   const pass1 = el("settingsNewPass").value;
@@ -762,7 +661,6 @@ el("settingsPassSave").onclick = async () => {
   showMsg("settingsPassMsg", "Password changed.", "ok");
 };
 
-// ---- Leave a review ----
 let selectedRating = 0;
 function paintStars(rating){
   document.querySelectorAll("#starPicker span").forEach((s) => {
@@ -813,25 +711,7 @@ el("reviewSave").onclick = async () => {
   showMsg("reviewMsg", "Saved - thank you!", "ok");
 };
 
-// ---- load the logged-in dashboard ----
 async function refreshSession(){
-  // BUG FIXED HERE (login page flash): this used to be a bare
-  // `if (!session) return;` with no explicit showWrap() call at all - it
-  // only "worked" because authWrap was visible in the raw HTML by default,
-  // which is exactly what let the login form flash in front of an already-
-  // authenticated user before this resolved. Now that every wrap starts
-  // hidden (see loadingWrap above), the logged-out path has to say so
-  // explicitly, the same way the broken-account and dashboard paths always
-  // already did.
-  //
-  // The session check itself is wrapped here too: getSession() failing
-  // (network hiccup, corrupted local storage) previously had no handling
-  // at all - an unhandled rejection from this fire-and-forget call would
-  // have left the page stuck on the loading placeholder forever, since
-  // nothing would ever call showWrap() to move past it. Deterministic
-  // fallback: if the session can't be verified, treat it as logged out
-  // (never show the dashboard/entitlements when that isn't certain) and
-  // let the user log in normally.
   let session;
   try {
     const result = await supa.auth.getSession();
@@ -848,56 +728,92 @@ async function refreshSession(){
   const uid = session.user.id;
   const { data: profile } = await supa.from("profiles").select("account_name").eq("id", uid).maybeSingle();
   const { data: entitlement } = await supa.from("entitlements")
-    .select("tier_id, tier_source, preferred_theme, tiers(display_name, cloud_enabled, " +
+    .select("tier_id, tier_source, tier_expires_at, preferred_theme, tiers(display_name, cloud_enabled, " +
             "widgets_enabled, music_player_enabled, office_tools_enabled, " +
             "streamer_tools_enabled, priority_support, allowed_themes, future_updates)")
     .eq("id", uid).maybeSingle();
 
-  // A logged-in session with no profile/entitlement row is exactly the
-  // "manually deleted from Table Editor instead of Authentication -> Users"
-  // scenario - show a clear explanation instead of silently displaying
-  // blank/undefined fields or throwing on a .single() call (which errors on
-  // zero rows; maybeSingle() returns null instead).
   if (!profile || !entitlement) {
     showWrap("broken");
     return;
   }
 
-  // ---- hand off to AVEN, if it's the one that sent us here ----
-  // A real top-level page redirect, NOT a background fetch(). Chrome/Edge's
-  // Private Network Access restricts a public HTTPS page's SUBRESOURCE
-  // requests (fetch, XHR, ...) to localhost, but does not restrict a full
-  // navigation - see aven_auth.py's module docstring for the sourcing on
-  // this. A fetch() here would silently fail on current Chrome versions for
-  // a lot of users; this redirect does not have that problem.
-  const params = new URLSearchParams(window.location.search);
+  let effectiveEntitlement = entitlement;
+  const expiresAt = entitlement.tier_expires_at ? Date.parse(entitlement.tier_expires_at) : NaN;
+  if (Number.isFinite(expiresAt) && expiresAt <= Date.now()) {
+    const { data: freeTier } = await supa.from("tiers")
+      .select("display_name, cloud_enabled, widgets_enabled, music_player_enabled, " +
+              "office_tools_enabled, streamer_tools_enabled, priority_support, " +
+              "allowed_themes, future_updates")
+      .eq("tier_id", "free").maybeSingle();
+    effectiveEntitlement = {
+      ...entitlement,
+      tier_id: "free",
+      tier_source: "expired",
+      tiers: freeTier || { display_name: "Free", allowed_themes: ["Frost"] },
+    };
+  }
+
+  const params = PAGE_PARAMS;
   const desktopCallback = params.get("desktop_callback");
   if (desktopCallback) {
-    const target = new URL(desktopCallback);
-    target.searchParams.set("access_token", session.access_token);
-    target.searchParams.set("refresh_token", session.refresh_token);
-    target.searchParams.set("account_name", profile.account_name);
-    window.location.href = target.toString();
+    const desktopState = params.get("desktop_state");
+    const handoffMode = params.get("desktop_handoff");
+    const v2 = handoffMode === "post-v2";
+    const target = validatedDesktopCallback(desktopCallback, desktopState, v2);
+    if (!target) {
+      showWrap("dash");
+      showMsg("dashMsg", "AVEN desktop sign-in request was invalid. Start sign-in again from AVEN.", "error");
+      return;
+    }
+
+    if (v2) {
+      postDesktopSession(target, desktopState, session, profile.account_name);
+    } else {
+      target.searchParams.set("access_token", session.access_token);
+      target.searchParams.set("refresh_token", session.refresh_token);
+      target.searchParams.set("account_name", profile.account_name);
+      window.location.replace(target.toString());
+    }
     return;
   }
 
   showWrap("dash");
+  const displayTier = effectiveEntitlement.tiers?.display_name || effectiveEntitlement.tier_id;
+  const sourceLabel = effectiveEntitlement.tier_source === "manual" ? "Manually granted" :
+                      effectiveEntitlement.tier_source === "stripe" ? "Paid subscription" :
+                      effectiveEntitlement.tier_source === "expired" ? "Plan expired" : "Free signup";
+  const normalizedTheme = LEGACY_THEME_ALIASES[effectiveEntitlement.preferred_theme] ||
+                          effectiveEntitlement.preferred_theme ||
+                          effectiveEntitlement.tiers?.allowed_themes?.[0] || "Frost";
+
   el("dashName").textContent = profile.account_name;
   el("dashAvatar").textContent = profile.account_name.charAt(0).toUpperCase();
-  el("dashTier").textContent = entitlement.tiers?.display_name || entitlement.tier_id;
-  el("dashSource").textContent = entitlement.tier_source === "manual" ? "Manually granted" :
-                                  entitlement.tier_source === "stripe" ? "Paid subscription" : "Free signup";
+  el("dashTier").textContent = displayTier;
+  el("dashSource").textContent = sourceLabel;
+  el("sidebarTier").textContent = displayTier + " · " + sourceLabel;
+  el("overviewName").textContent = profile.account_name;
+  el("overviewEmail").textContent = session.user.email || "Signed-in account";
+  el("overviewPlan").textContent = displayTier;
+  el("overviewPlanNote").textContent = sourceLabel;
+  el("overviewTheme").textContent = normalizedTheme;
+  el("dashExpires").textContent = Number.isFinite(expiresAt)
+    ? (expiresAt <= Date.now() ? "Expired " : "Through ") + new Date(expiresAt).toLocaleDateString()
+    : "No fixed expiry";
   el("settingsName").value = profile.account_name;
 
-  renderFeatures(entitlement.tiers || {});
-  renderThemeSwatches(entitlement.tiers?.allowed_themes || ["Holographic E.V.A."], entitlement.preferred_theme);
+  const checkoutState = params.get("checkout");
+  if (checkoutState === "success") {
+    showMsg("dashMsg", "Checkout completed. Stripe may take a moment to refresh your plan access.", "ok");
+  } else if (checkoutState === "cancelled") {
+    showMsg("dashMsg", "Checkout was cancelled. Your current plan was not changed.", "warn");
+  }
+
+  renderFeatures(effectiveEntitlement.tiers || {});
+  renderThemeSwatches(effectiveEntitlement.tiers?.allowed_themes || ["Frost"], normalizedTheme);
   loadOwnReview(uid);
 }
 
-// ---- Features section: a plain checklist off the tiers embed, no logic
-// beyond "is this flag true" - matches how the desktop Settings cards
-// already treat these same flags (informational, enforcement lives
-// server-side / in aven_brain.py's tool methods).
 function renderFeatures(tier){
   const rows = [
     ["Cloud AI requests", tier.cloud_enabled],
@@ -923,10 +839,6 @@ function renderFeatures(tier){
   else { note.style.display = "none"; }
 }
 
-// ---- Theme picker: every known theme is shown, even ones this tier
-// doesn't include - locked-but-visible (same convention as the desktop
-// app's locked-feature banners) reads as "here's what upgrading gets you",
-// not just a shorter list with no explanation.
 function renderThemeSwatches(allowedThemes, preferred){
   el("themeSwatches").innerHTML = ALL_THEME_NAMES.map((name) => {
     const c = THEME_COLORS[name];
@@ -967,10 +879,9 @@ refreshSession();
     "color:#ffb0a0;padding:14px 20px;font-family:sans-serif;font-size:14px;" +
     "z-index:9999;border-bottom:2px solid #ff8a80;";
   banner.textContent = "This page failed to start: " + fatalError.message +
-    " (press F12, open the Console tab, and send a screenshot of any red text there)";
+    ". Reload the page; if it continues, use the project support link.";
   document.body.prepend(banner);
   console.error("A.V.E.N. account.html fatal init error:", fatalError);
-}
-</script>
+}</script>
 </body>
 </html>
