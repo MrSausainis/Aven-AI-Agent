@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /account.html
 
-Sitemap: https://mrsausainis.github.io/Aven-AI-Agent/sitemap.xml
+Sitemap: https://get-avenai.netlify.app/sitemap.xml

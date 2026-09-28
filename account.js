@@ -39,7 +39,7 @@ const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 const el = (id) => document.getElementById(id);
 
 if (DESKTOP_LOGIN_MODE) {
-  el("authTitle").textContent = "Connect A.V.E.N. desktop";
+  el("authTitle").textContent = "Connect AvenAI desktop";
   el("authSubtitle").textContent = "Log in here to create a separate secure desktop session.";
 }
 
@@ -592,7 +592,7 @@ function renderFeatures(tier){
     </div>`).join("");
 
   const noteText = {
-    all: "Every future paid feature is included permanently on this tier - no re-upgrade needed as A.V.E.N. grows.",
+    all: "Every future paid feature is included permanently on this tier - no re-upgrade needed as AvenAI grows.",
     subscription: "Every current and future paid feature is included for as long as your subscription stays active.",
     none: "New paid features added later aren't automatically included on this tier.",
   }[tier.future_updates] || "";
@@ -628,7 +628,7 @@ function renderThemeSwatches(allowedThemes, preferred){
         showMsg("themeMsg", error.message, "error");
         return;
       }
-      showMsg("themeMsg", "Saved - applies next time you open A.V.E.N.", "ok");
+      showMsg("themeMsg", "Saved - applies next time you open AvenAI", "ok");
     };
   });
 }
@@ -676,5 +676,5 @@ refreshSession();
   banner.textContent = "This page failed to start: " + fatalError.message +
     ". Reload the page; if it continues, use the project support link.";
   document.body.prepend(banner);
-  console.error("A.V.E.N. account.html fatal init error:", fatalError);
+  console.error("AvenAI account.html fatal init error:", fatalError);
 }
