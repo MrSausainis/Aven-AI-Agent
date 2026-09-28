@@ -1,0 +1,5 @@
+Contact: https://github.com/MrSausainis/Aven-AI-Agent/security/advisories/new
+Expires: 2027-09-29T00:00:00Z
+Preferred-Languages: en, lt
+Canonical: https://mrsausainis.github.io/Aven-AI-Agent/.well-known/security.txt
+Policy: https://mrsausainis.github.io/Aven-AI-Agent/security.html

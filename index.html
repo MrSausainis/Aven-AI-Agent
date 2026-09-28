@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com https://upiadmvxzphegivqszvp.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <meta name="description" content="A.V.E.N. is a Windows desktop AI assistant with voice control, a Dynamic Island-style overlay, local or cloud AI, desktop actions, timers, Spotify controls and optional productivity tools." />
 <meta name="theme-color" content="#05080d" />
 <meta property="og:title" content="A.V.E.N. — desktop AI assistant for Windows" />
@@ -14,6 +18,7 @@
 <link rel="stylesheet" href="site.css" />
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
   <div class="shell">
     <a class="brand" href="index.html" aria-label="A.V.E.N. home">
@@ -24,7 +29,8 @@
     <nav class="header-nav" aria-label="Primary navigation">
       <a href="#product">Product</a>
       <a href="#before-download">Before download</a>
-      <a href="#reviews">Reviews</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="security.html">Security</a>
     </nav>
     <div class="header-actions">
       <a class="btn btn-secondary" href="account.html">Account</a>
@@ -33,7 +39,7 @@
   </div>
 </header>
 
-<main>
+<main id="main-content">
   <section class="hero">
     <div class="shell hero-grid">
       <div>
@@ -142,7 +148,7 @@
             <div class="fact"><div><strong>Paid plans are optional.</strong> They unlock additional tools and plan features; checkout is handled by Stripe.</div></div>
             <div class="fact"><div><strong>Current builds are not code-signed.</strong> Windows SmartScreen may warn the first time you run the installer.</div></div>
           </div>
-          <div class="notice">Installer source: official GitHub release for this repository. Avoid copies hosted elsewhere.</div>
+          <div class="notice">Installer source: official GitHub release for this repository. Avoid copies hosted elsewhere. Current builds are unsigned; see <a href="security.html#downloads">download security</a> before installing.</div>
         </div>
       </div>
     </div>
@@ -183,47 +189,17 @@
       <a href="account.html">Account</a>
       <a href="https://github.com/MrSausainis/Aven-AI-Agent/releases">Releases</a>
       <a href="https://github.com/MrSausainis/Aven-AI-Agent/issues">Support</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="refunds.html">Refunds</a>
+      <a href="cookies.html">Tracking</a>
+      <a href="security.html">Security</a>
+      <a href="accessibility.html">Accessibility</a>
       <a href="donate.html">Support the project</a>
     </div>
   </div>
 </footer>
 
-<script>
-const RELEASES_API = "https://api.github.com/repos/MrSausainis/Aven-AI-Agent/releases/latest";
-const REVIEWS_URL = "https://upiadmvxzphegivqszvp.supabase.co/rest/v1/reviews?select=rating,body,account_name&order=created_at.desc&limit=6";
-const SUPABASE_ANON_KEY = "sb_publishable_iS9do7OPQuY-zEeAFfSrWQ_zA_IAObI";
-
-fetch(RELEASES_API)
-  .then((r) => r.ok ? r.json() : null)
-  .then((data) => {
-    if (data?.tag_name) document.getElementById("versionBadge").textContent = data.tag_name;
-  })
-  .catch(() => {});
-
-fetch(REVIEWS_URL, { headers: { apikey: SUPABASE_ANON_KEY } })
-  .then((r) => r.ok ? r.json() : [])
-  .then((reviews) => {
-    const grid = document.getElementById("reviewsGrid");
-    if (!reviews?.length) {
-      grid.innerHTML = '<p class="reviews-empty">No reviews yet. Signed-in users can leave one from the Account page.</p>';
-      return;
-    }
-    grid.innerHTML = reviews.map((r) => `
-      <article class="review-card">
-        <div class="review-stars">${"★".repeat(r.rating)}${"☆".repeat(5-r.rating)}</div>
-        <div class="review-body">${escapeHtml(r.body)}</div>
-        <div class="review-author">${escapeHtml(r.account_name)}</div>
-      </article>`).join("");
-  })
-  .catch(() => {
-    document.getElementById("reviewsGrid").innerHTML = '<p class="reviews-empty">Reviews are unavailable right now.</p>';
-  });
-
-function escapeHtml(value){
-  const div = document.createElement("div");
-  div.textContent = value ?? "";
-  return div.innerHTML;
-}
-</script>
+<script src="site.js" defer></script>
 </body>
 </html>
