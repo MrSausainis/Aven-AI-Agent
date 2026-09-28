@@ -53,3 +53,10 @@ A.V.E.N. is currently distributed as an unsigned Windows application, so Microso
 A.V.E.N. is under active development. The current focus is release stability, product polish, security, and turning the existing desktop-assistant foundation into a reliable long-term Windows agent platform.
 
 For product information, downloads, account access, and current availability, use the [official website](https://mrsausainis.github.io/Aven-AI-Agent/).
+
+
+## Website trust & compliance
+
+The website includes Privacy, Terms, Refund/withdrawal, Tracking, Security and Accessibility pages. The static frontend uses a Content Security Policy, version-pins the Supabase browser client, keeps payment secrets server-side, and exposes self-service review deletion plus a browser-generated account-data export.
+
+Commercial-launch facts that cannot be safely invented (legal trader/controller identity, private contact details, tax classification and final cancellation/deletion flows) are tracked in [LEGAL_SETUP.md](LEGAL_SETUP.md). Do not clear those blockers with placeholder or fake business details.

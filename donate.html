@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <meta name="description" content="Support the independent development of A.V.E.N., a Windows desktop AI assistant." />
 <meta name="theme-color" content="#05080d" />
 <link rel="canonical" href="https://mrsausainis.github.io/Aven-AI-Agent/donate.html" />
@@ -10,13 +14,14 @@
 <link rel="stylesheet" href="site.css" />
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
   <div class="shell">
     <a class="brand" href="index.html"><span class="brand-mark">AV</span><span class="brand-word">A.V.E.N.</span></a>
     <div class="header-actions"><a class="btn btn-quiet" href="index.html">Back to product</a></div>
   </div>
 </header>
-<main class="simple-page">
+<main class="simple-page" id="main-content">
   <section class="simple-card">
     <div class="eyebrow"><span class="eyebrow-line"></span><span>Independent development</span></div>
     <h1>Support A.V.E.N.</h1>
@@ -25,11 +30,11 @@
       <div><strong>One-time donation</strong><small>Handled by Stripe. No A.V.E.N. account is required.</small></div>
       <a class="btn btn-primary" href="https://buy.stripe.com/fZufZibQQ4Qr4uUd154ko00">Open Stripe</a>
     </div>
-    <div class="notice">A review is also useful. Signed-in users can leave one from the Account page.</div>
+    <div class="notice">A review is also useful. Signed-in users can leave one from the Account page. One-time support payments are handled by Stripe; see <a href="refunds.html">refund and withdrawal information</a>.</div>
   </section>
 </main>
 <footer class="site-footer">
-  <div class="shell"><span>A.V.E.N.</span><div class="footer-links"><a href="account.html">Account</a><a href="https://github.com/MrSausainis/Aven-AI-Agent/issues">Support</a></div></div>
+  <div class="shell"><span>A.V.E.N.</span><div class="footer-links"><a href="account.html">Account</a><a href="https://github.com/MrSausainis/Aven-AI-Agent/issues">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="refunds.html">Refunds</a><a href="cookies.html">Tracking</a><a href="security.html">Security</a><a href="accessibility.html">Accessibility</a></div></div>
 </footer>
 </body>
 </html>
