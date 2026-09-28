@@ -7,21 +7,21 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://upiadmvxzphegivqszvp.supabase.co wss://upiadmvxzphegivqszvp.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self' http://127.0.0.1:* http://localhost:*; upgrade-insecure-requests" />
 <meta name="color-scheme" content="dark" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-<meta name="description" content="Manage your A.V.E.N. account, plan access, desktop theme and security settings." />
+<meta name="description" content="Manage your AvenAI account, plan access, desktop theme and security settings." />
 <meta name="theme-color" content="#05080d" />
 <meta name="robots" content="noindex,nofollow" />
-<meta property="og:title" content="A.V.E.N. Account" />
-<meta property="og:description" content="Manage plan access and settings for the A.V.E.N. Windows desktop assistant." />
-<title>A.V.E.N. Account</title>
+<meta property="og:title" content="AvenAI Account" />
+<meta property="og:description" content="Manage plan access and settings for the AvenAI Windows desktop assistant." />
+<title>AvenAI Account</title>
 <link rel="stylesheet" href="site.css" />
 </head>
 <body class="account-page">
 <a class="skip-link" href="#account-main">Skip to account content</a>
 <header class="site-header">
   <div class="shell">
-    <a class="brand" href="index.html" aria-label="A.V.E.N. home">
-      <span class="brand-mark">AV</span>
-      <span class="brand-word">A.V.E.N.</span>
+    <a class="brand" href="index.html" aria-label="AvenAI home">
+      <span class="brand-mark">AI</span>
+      <span class="brand-word">AvenAI</span>
       <span class="brand-version">ACCOUNT</span>
     </a>
     <div class="header-actions">
@@ -35,18 +35,18 @@
   <div class="loader-box">
     <div class="loader-ring"></div>
     <strong>Checking your session</strong>
-    <div style="margin-top:7px;font-size:.8rem;">Loading your A.V.E.N. account securely.</div>
+    <div style="margin-top:7px;font-size:.8rem;">Loading your AvenAI account securely.</div>
   </div>
 </div>
 
 <div class="auth-layout hidden" id="authWrap">
   <section class="auth-context">
-    <div class="eyebrow"><span class="eyebrow-line"></span><span>Your A.V.E.N. account</span></div>
+    <div class="eyebrow"><span class="eyebrow-line"></span><span>Your AvenAI account</span></div>
     <h1>One place for access, plans and preferences.</h1>
     <p>The desktop app can be tried without an account. Sign in when you want plan access, synced appearance preferences, reviews, or a desktop session connected to your account.</p>
     <div class="auth-benefits">
       <div class="auth-benefit"><span>Plan</span><span>See exactly which features your current tier unlocks and upgrade when you actually need more.</span></div>
-      <div class="auth-benefit"><span>Desktop</span><span>Sign in from A.V.E.N. without copying passwords or API keys into the website.</span></div>
+      <div class="auth-benefit"><span>Desktop</span><span>Sign in from AvenAI without copying passwords or API keys into the website.</span></div>
       <div class="auth-benefit"><span>Appearance</span><span>Your chosen account theme can carry back to the desktop app on the next login.</span></div>
     </div>
   </section>
@@ -145,7 +145,7 @@
       <div class="dash-head">
         <div>
           <div class="dash-kicker">Account overview</div>
-          <h1>Your A.V.E.N. setup</h1>
+          <h1>Your AvenAI setup</h1>
           <p>Plan, app access and the settings that matter to the desktop app.</p>
         </div>
       </div>
@@ -160,7 +160,7 @@
         <div><h3>Need the latest desktop build?</h3><p>Download the official installer directly from the GitHub release.</p></div>
         <div class="actions">
           <button class="btn btn-secondary" data-open-section="appearance">Appearance</button>
-          <button class="btn btn-primary" id="downloadBtn">Download A.V.E.N.</button>
+          <button class="btn btn-primary" id="downloadBtn">Download AvenAI</button>
         </div>
       </div>
       <div class="msg" id="dashMsg"></div>
@@ -189,12 +189,12 @@
       </div>
       <div class="panel">
         <h3>Billing</h3>
-        <p class="panel-lede">Checkout is handled by Stripe. A.V.E.N. does not store card details on this website.</p>
+        <p class="panel-lede">Checkout is handled by Stripe. AvenAI does not store card details on this website.</p>
       </div>
     </section>
 
     <section class="dash-section" id="section-features">
-      <div class="dash-head"><div><div class="dash-kicker">App access</div><h1>Features on your tier</h1><p>This reflects the entitlement A.V.E.N. receives when you sign in.</p></div></div>
+      <div class="dash-head"><div><div class="dash-kicker">App access</div><h1>Features on your tier</h1><p>This reflects the entitlement AvenAI receives when you sign in.</p></div></div>
       <div class="feature-list" id="featuresList"><div class="feature-row off"><span class="feature-mark">—</span><span class="feature-name">Loading…</span></div></div>
       <div class="feature-note" id="futureUpdatesNote"></div>
     </section>
@@ -239,7 +239,7 @@
       <div class="dash-head"><div><div class="dash-kicker">Feedback</div><h1>Leave a review</h1><p>Your review appears on the homepage with your account name. Saving again edits the same review.</p></div></div>
       <div class="panel">
         <div class="star-picker" id="starPicker" aria-label="Review rating"><button type="button" data-star="1" aria-label="1 star">★</button><button type="button" data-star="2" aria-label="2 stars">★</button><button type="button" data-star="3" aria-label="3 stars">★</button><button type="button" data-star="4" aria-label="4 stars">★</button><button type="button" data-star="5" aria-label="5 stars">★</button></div>
-        <textarea id="reviewBody" maxlength="500" rows="4" placeholder="What has your experience with A.V.E.N. been like?"></textarea>
+        <textarea id="reviewBody" maxlength="500" rows="4" placeholder="What has your experience with AvenAI been like?"></textarea>
         <button class="btn btn-primary" id="reviewSave" style="margin-top:10px;">Save review</button>
         <div class="msg" id="reviewMsg"></div>
       </div>
