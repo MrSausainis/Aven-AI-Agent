@@ -13,6 +13,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import Stripe from "npm:stripe@22.6.0";
+import { commerceConfig } from "../_shared/purchase-confirmation.ts";
 
 const ACCOUNT_PAGE_URL = "https://get-avenai.netlify.app/account";
 const WEBSITE_ORIGIN = "https://get-avenai.netlify.app";
@@ -57,6 +58,7 @@ type Attempt = {
   startedAt: number;
   plan: PlanId;
   consentId: string;
+  offer: Record<string, unknown>;
   customerParams: Stripe.CustomerCreateParams;
   sessionParams?: Stripe.Checkout.SessionCreateParams;
   sessionId?: string;
@@ -191,6 +193,9 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Purchase evidence does not match this account and plan." }, 403);
     }
 
+    let confirmationConfig;
+    try { confirmationConfig=commerceConfig(); }
+    catch { return jsonResponse({error:'Purchases are unavailable until trader and confirmation delivery are configured.'},503); }
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -348,6 +353,11 @@ Deno.serve(async (req: Request) => {
       }
       await save({ id: crypto.randomUUID(), startedAt: Date.now(), plan,
         consentId,
+        offer: { trader:confirmationConfig.trader,confirmation_from:confirmationConfig.from,
+          description:'Paid feature access for the selected AvenAI account tier. Personal AI API costs remain separate (BYOK).',
+          price:{id:expected.priceId,unit_amount:price.unit_amount,currency:price.currency,
+            interval:price.recurring.interval,interval_count:price.recurring.interval_count},
+        },
         customerParams: { ...(user.email ? { email: user.email } : {}), metadata: { supabase_uid: user.id } },
       });
     }
@@ -374,6 +384,7 @@ Deno.serve(async (req: Request) => {
         billing_address_collection: "required",
         customer_update: { address: "auto" },
         success_url: `${ACCOUNT_PAGE_URL}?checkout=success`, cancel_url: `${ACCOUNT_PAGE_URL}?checkout=cancelled`,
+        subscription_data: {metadata:{checkout_consent:attempt!.consentId,checkout_attempt:attempt!.id}},
         metadata: { aven_plan: attempt!.plan, supabase_uid: user.id, checkout_attempt: attempt!.id,
           checkout_consent: attempt!.consentId, consent_policy: consent.policy_version, legal_version: consent.legal_version },
         integration_identifier: `jysen-checkout-${Array.from(crypto.getRandomValues(new Uint8Array(8)), (n) => String.fromCharCode(97 + n % 26)).join("")}`,

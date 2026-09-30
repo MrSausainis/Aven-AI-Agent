@@ -2,10 +2,10 @@
 do $test$
 declare uid uuid:=gen_random_uuid(); other_uid uuid:=gen_random_uuid(); unconfirmed uuid:=gen_random_uuid();
 begin
-  insert into auth.users(id,email_confirmed_at,raw_user_meta_data)
-    values(uid,now(),jsonb_build_object('account_name','consent_'||substr(uid::text,1,8))),
-    (other_uid,now(),jsonb_build_object('account_name','consent_'||substr(other_uid::text,1,8))),
-    (unconfirmed,null,jsonb_build_object('account_name','consent_'||substr(unconfirmed::text,1,8)));
+  insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data)
+    values(uid,uid::text||'@example.invalid',now(),jsonb_build_object('account_name','consent_'||substr(uid::text,1,8))),
+    (other_uid,other_uid::text||'@example.invalid',now(),jsonb_build_object('account_name','consent_'||substr(other_uid::text,1,8))),
+    (unconfirmed,unconfirmed::text||'@example.invalid',null,jsonb_build_object('account_name','consent_'||substr(unconfirmed::text,1,8)));
   perform set_config('request.jwt.claim.sub',uid::text,true);
   perform set_config('test.other',other_uid::text,true);
   perform set_config('test.unconfirmed',unconfirmed::text,true);
@@ -85,6 +85,7 @@ begin
   assert failed, 'Clients cannot reserve evidence for a checkout';
   perform set_config('test.consent_id',rec->>'id',true);
   perform set_config('test.own_uid',auth.uid()::text,true);
+  perform set_config('test.legal_version',legal->>'version',true);
   perform set_config('request.jwt.claim.sub',current_setting('test.other'),true);
   assert (select count(*) from public.checkout_consents)=0, 'Another account cannot read evidence';
   failed:=false;
@@ -104,7 +105,10 @@ declare uid uuid:=auth.uid(); token uuid:=gen_random_uuid(); attempt uuid:=gen_r
 begin
   insert into public.checkout_attempts(user_id,lease_token,lease_expires_at,attempt)
   values(uid,token,clock_timestamp()+interval '120 seconds',jsonb_build_object('id',attempt,'plan','monthly','consentId',consent,
-    'startedAt',extract(epoch from clock_timestamp())*1000));
+    'startedAt',extract(epoch from clock_timestamp())*1000,
+    'offer',jsonb_build_object('price',jsonb_build_object('id','price_1UCPzSJ78TGxjoZzD8Pc4ppZ','currency','eur','unit_amount',200,'interval','month','interval_count',1),
+      'trader',jsonb_build_object('legal_name','Fixture','geographic_address','Fixture address','country','LT','support_email','support@example.invalid'),
+      'description','Fixture access','confirmation_from','receipts@example.invalid')));
   perform set_config('test.token',token::text,true);
   perform set_config('test.attempt',attempt::text,true);
 end $test$;
@@ -185,7 +189,7 @@ begin
 end $test$;
 reset role;
 update jysen_private.legal_releases set is_current=false where version='test.rotated';
-update jysen_private.legal_releases set is_current=true where version='2026-09-30.1';
+update jysen_private.legal_releases set is_current=true where version=current_setting('test.legal_version');
 delete from jysen_private.legal_releases where version='test.rotated';
 -- New attempts cannot reuse evidence previously bound to another purchase.
 update public.checkout_consents set expires_at=clock_timestamp()-interval '1 second' where id=current_setting('test.consent_id')::uuid;

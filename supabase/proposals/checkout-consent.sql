@@ -50,7 +50,10 @@ create policy checkout_consents_select_own on public.checkout_consents
 create table jysen_private.checkout_consent_bindings (
   consent_id uuid primary key references public.checkout_consents(id),
   attempt_id uuid not null unique,
-  bound_at timestamptz not null default clock_timestamp()
+  bound_at timestamptz not null default clock_timestamp(),
+  recipient_email text not null,
+  offer jsonb not null,
+  documents jsonb not null
 );
 alter table jysen_private.checkout_consent_bindings enable row level security;
 revoke all on jysen_private.checkout_consent_bindings from public,anon,authenticated,service_role;
@@ -174,8 +177,18 @@ begin
     return to_jsonb(existing); -- retries retain their original evidence/time
   end if;
   if rec.expires_at<=clock_timestamp() then raise exception 'Purchase consent expired' using errcode='42501'; end if;
-  insert into jysen_private.checkout_consent_bindings(consent_id,attempt_id)
-    values(p_consent_id,p_attempt_id) returning * into existing;
+  if jsonb_typeof(lease.attempt->'offer') is distinct from 'object'
+      or lease.attempt->'offer'->'price'->>'id' is distinct from rec.price_id
+      or lease.attempt->'offer'->>'confirmation_from' is null
+      or not exists(select 1 from jysen_private.purchase_documents where version=rec.legal_version) then
+    raise exception 'Frozen purchase offer and documents required' using errcode='42501';
+  end if;
+  insert into jysen_private.checkout_consent_bindings(consent_id,attempt_id,recipient_email,offer,documents)
+    select p_consent_id,p_attempt_id,u.email,lease.attempt->'offer',
+      jsonb_build_object('terms_html',release.terms_html,'privacy_html',release.privacy_html,
+        'refunds_html',d.refunds_html,'refunds_sha256',d.refunds_sha256)
+    from auth.users u join jysen_private.purchase_documents d on d.version=rec.legal_version
+    where u.id=p_user_id and u.email is not null returning * into strict existing;
   return to_jsonb(existing);
 end $fn$;
 

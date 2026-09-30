@@ -20,7 +20,7 @@ test("public build preserves assets/headers and excludes backend and unexpected 
   assert.equal(built.status, 0, built.stderr);
   const output = join(root, "dist");
   const published = files(output);
-  for (const required of ["index.html", "account.html", "account.js", "404.html", "_headers", ".well-known/security.txt", "extensions_manifest.json"]) {
+  for (const required of ["index.html", "account.html", "account.js", "404.html", "_headers", ".well-known/security.txt", "extensions_manifest.json", "terms-2026-10-01.1.html", "privacy-2026-10-01.1.html", "refunds-2026-10-01.1.html"]) {
     assert.ok(published.includes(required), `Missing public entry point: ${required}`);
   }
   for (const file of published) {

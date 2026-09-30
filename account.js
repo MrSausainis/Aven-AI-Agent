@@ -11,9 +11,9 @@ const SUPABASE_ANON_KEY = "sb_publishable_iS9do7OPQuY-zEeAFfSrWQ_zA_IAObI";
 const DOWNLOAD_URL = "https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe";
 const RESEND_COOLDOWN_SECONDS = 30;
 const LEGAL_RELEASE = {
-  version: "2026-09-30.1",
-  terms_sha256: "3390697fbee06f6aec3b48b3dbf37366c7a7b31895d77a1007e12155d2b62eb7",
-  privacy_sha256: "fbef50b2959feef42de1cfa7ef920d4ecefbfeeca7d1e0972c3d8fa35124eac6",
+  version: "2026-10-01.1",
+  terms_sha256: "6182ba58728f5e01eb3e61dc1683c98332064d846280842013544d68ed265cb2",
+  privacy_sha256: "cb407f4a567bbe5fe5ba3bc4dee57ca7c27241951d6ed5320127a2282be6fb58",
 };
 
 const THEME_COLORS = {
@@ -724,7 +724,7 @@ async function refreshSession(){
 
   const checkoutState = params.get("checkout");
   if (checkoutState === "success") {
-    showMsg("dashMsg", "Checkout completed. Stripe may take a moment to refresh your plan access.", "ok");
+    showMsg("dashMsg", "Returned from Checkout. Payment and emailed confirmation are verified on the server before new paid access is activated. Save your confirmation below when it is available.", "ok");
   } else if (checkoutState === "cancelled") {
     showMsg("dashMsg", "Checkout was cancelled. Your current plan was not changed.", "warn");
   }
@@ -861,6 +861,26 @@ function renderThemeSwatches(allowedThemes, preferred){
   });
 }
 
+async function downloadPurchaseConfirmations() {
+  hideMsg('confirmationMsg');
+  setBusy(el('downloadConfirmationsBtn'),true,'Preparing...');
+  try {
+    const {data:{user},error:authError}=await supa.auth.getUser();
+    if(authError || !user)throw new Error('Sign in again to get your confirmations.');
+    const {data,error}=await supa.from('purchase_confirmations').select('id,user_id,session_id,payload_text,sha256,created_at').eq('user_id',user.id);
+    if(error || !Array.isArray(data) || data.some(row=>row.user_id!==user.id || typeof row.payload_text!=='string'))throw new Error('Could not load your confirmations.');
+    if(!data.length){showMsg('confirmationMsg','No paid purchase confirmation is available yet.','warn');return;}
+    const {data:{user:current},error:currentError}=await supa.auth.getUser();
+    if(currentError || current?.id!==user.id)throw new Error('Your account changed. Reload before downloading.');
+    const copy={schema_version:1,purchase_confirmations:data};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(copy,null,2)],{type:'application/json'}));
+    const a=document.createElement('a');a.href=url;a.download='aven-purchase-confirmations.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    showMsg('confirmationMsg','Your saved confirmation copies include the exact purchase wording and documents.','ok');
+  } catch(error){showMsg('confirmationMsg',error.message||'Could not download confirmations. Try again.','error');}
+  finally{setBusy(el('downloadConfirmationsBtn'),false,'Save purchase confirmations');}
+}
+el('downloadConfirmationsBtn').onclick=downloadPurchaseConfirmations;
+
 async function exportAccountData(){
   hideMsg("dataMsg");
   setBusy(el("exportDataBtn"), true, "Preparing...");
@@ -871,22 +891,26 @@ async function exportAccountData(){
       return;
     }
     const uid = user.id;
-    const [profileResult, entitlementResult, reviewResult, legalResult] = await Promise.all([
+    const [profileResult, entitlementResult, reviewResult, legalResult, consentResult, confirmationResult] = await Promise.all([
       supa.from("profiles").select("id,account_name,created_at,preferred_theme").eq("id", uid).maybeSingle(),
       supa.from("entitlements").select("id,account_name,tier_id,tier_source,tier_expires_at,stripe_customer_id,stripe_subscription_id,stripe_subscription_status,preferred_theme,updated_at").eq("id", uid).maybeSingle(),
       supa.from("reviews").select("id,account_name,rating,body,created_at,updated_at").eq("id", uid).maybeSingle(),
       supa.from("legal_acceptances").select("user_id,version,terms_sha256,privacy_sha256,accepted_at,source").eq("user_id", uid),
+      supa.from("checkout_consents").select("id,user_id,request_id,plan,price_id,policy_version,policy_sha256,request_text,rights_notice,legal_version,terms_sha256,privacy_sha256,requested_at,expires_at,source,rights_preserved").eq("user_id",uid),
+      supa.from("purchase_confirmations").select("id,user_id,consent_id,session_id,recipient_email,payload_text,sha256,created_at").eq("user_id",uid),
     ]);
-    if ([profileResult, entitlementResult, reviewResult, legalResult].some(result => result.error)
+    if ([profileResult, entitlementResult, reviewResult, legalResult, consentResult, confirmationResult].some(result => result.error)
         || !profileResult.data || !entitlementResult.data
         || [profileResult.data, entitlementResult.data, reviewResult.data].some(row => row && row.id !== uid)
-        || !Array.isArray(legalResult.data) || legalResult.data.some(row => row.user_id !== uid)) {
+        || [legalResult,consentResult,confirmationResult].some(result=>!Array.isArray(result.data)||result.data.some(row=>row.user_id!==uid))) {
       throw new Error("Account data could not be fully loaded");
     }
+    const {data:{user:currentUser},error:currentUserError}=await supa.auth.getUser();
+    if(currentUserError || currentUser?.id!==uid)throw new Error("Account changed before export");
     // Select account fields explicitly; never serialize the SDK session/user
     // object wholesale, which can carry authentication/provider tokens.
     const payload = {
-      schema_version: 2, scope: "basic_account", exported_at: new Date().toISOString(),
+      schema_version: 3, scope: "basic_account", exported_at: new Date().toISOString(),
       account: {
         id: uid, email: user.email || null, phone: user.phone || null,
         created_at: user.created_at || null, updated_at: user.updated_at || null,
@@ -897,7 +921,8 @@ async function exportAccountData(){
       },
       profile: profileResult.data, entitlement: entitlementResult.data, review: reviewResult.data || null,
       legal_acceptances: legalResult.data,
-      note: "Basic export of your profile, entitlement, review and selected authentication fields, including user-provided metadata. It does not include payment-provider records, server logs, authentication/session tokens or desktop data. Payment-card data is handled by Stripe and is not stored by this website.",
+      purchase_consents: consentResult.data, purchase_confirmations: confirmationResult.data,
+      note: "Basic export of your profile, entitlement, review, legal acceptances, purchase consent and saved confirmation records, and selected authentication fields, including user-provided metadata. It does not include payment-provider records, server logs, authentication/session tokens or desktop data. Payment-card data is handled by Stripe and is not stored by this website.",
     };
     const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="aven-account-data.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);

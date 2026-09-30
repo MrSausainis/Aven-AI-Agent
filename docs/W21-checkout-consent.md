@@ -1,62 +1,71 @@
-# W21 purchase consent integration
+# W21: purchase-specific consent and durable purchase confirmation
 
-Status: draft, not deployed. W21 remains open pending durable contract confirmation and final legal design.
+Source implementation complete; operational activation is blocked by real trader / verified sender configuration and coordinated acceptance. This is not a legal launch certification. No production deployment, real email, payment or schema change has occurred in this draft.
 
-Signup metadata and acceptance of general Terms do not establish a purchase-specific early-access request. This change records two separate affirmative inputs against exact server-owned wording, the current legal release, a server-mapped plan/Price, the authenticated confirmed account, and server timestamps.
+## Resulting behavior
 
-The proposed wording preserves statutory withdrawal/refund rights. It is not a digital-content withdrawal waiver, does not assert that activating a recurring subscription fully performs the contract, and is not a substitute for final contract classification or durable purchase confirmation.
+Account presents two separate unchecked inputs using server-versioned text. Acceptance of general Terms and signup metadata never substitute for a purchase-specific request. Requesting immediate access preserves applicable statutory withdrawal/refund rights. The flow does not claim a digital-content waiver or full performance at recurring subscription activation.
 
-## Account and checkout behavior
+The selected plan, exact notice text/version/hash, legal release, verified account and server time are archived. A frozen attempt binds this evidence under its account reservation before any Stripe customer/session creation. Its public offer includes the server-validated Stripe Price/currency/interval and configured real trader identity. Secret API credentials are never copied into an offer or export.
 
-Account loads policy text from the server and renders it as text, with two unchecked labelled inputs. A changed account, policy or hash clears the inputs. General Terms are checked independently. Concurrent clicks are fenced across both plans. The selected plan records an account-scoped nonce; session storage and an in-memory fallback preserve the same request after lost responses without restoring checked controls. A reload requires affirmative inputs again. Errors and returned Stripe URLs are validated before redirecting.
+Retries retain their original receipt and frozen Stripe parameters. An expired intent can recover only its exact already-bound persisted attempt within the conservative 23-hour window; it cannot authorize a replacement purchase. A known open plan switch expires the verified old link before creating a new purchase with fresh evidence. Ambiguous creates cannot switch plan or receipt. Legacy unbound sessions/attempts require support and are left intact.
 
-create-checkout verifies the user's JWT, current legal acceptance and own matching consent before claiming the account reservation. A new immutable attempt includes consentId and binds evidence under its fenced lease before customer/session creation. Frozen Checkout metadata includes consent, policy, legal release and attempt identities. Client flags and arbitrary client identity cannot substitute for evidence.
+New subscription metadata carries the binding into every subscription event. The signed Stripe webhook still reconciles current Stripe state rather than stale event snapshots. Before granting a new paid tier, it retrieves the subscription and completed paid Checkout, checks account/customer/subscription/metadata and exact line-item price/quantity, archives the immutable confirmation, sends the confirmation email, and records the provider acknowledgement. Email failures leave the billing event retryable and do not grant new access. Existing legacy subscription reconciliation, revocation and past-due grace are preserved without inventing consent.
 
-Retries retain their original receipt and Stripe parameters. An unresolved create cannot switch plan or receipt. A bound open same-plan session requires its original receipt. A plan switch expires the verified old link before creating a replacement with a fresh plan-specific receipt. Lost responses recover only matching attempt/consent metadata. Legacy unbound attempts or sessions are left intact and require support; they are never adopted as consent.
+The email includes readable trader/contact, plan, amount/currency, renewal and cancellation information, exact early-access wording/time/version, a withdrawal-notice option and explicit rights preservation. It attaches the exact confirmation bytes and complete archived Terms, Privacy and Refund HTML documents, rather than relying on changeable links. A SHA-256 digest identifies the saved confirmation. Provider acceptance is recorded accurately; it is not represented as proof of inbox delivery.
 
-An expired intent can recover only its exact already-bound persisted attempt within the conservative 23-hour window. It cannot start a replacement. Resolved attempts require a fresh receipt; the server returns new_consent_required without saving a poisoned replacement attempt. Policy/legal rotation or loss of account confirmation blocks binding, including retries.
+A separate delivery record serializes mail attempts. The entire outgoing message and sender are frozen before sending. Retries use the same Resend idempotency key and payload even after template/config changes. Busy workers or lease loss cannot mark a send accepted. Ambiguous sends older than 23 hours require provider reconciliation rather than blind retries, because Resend idempotency lasts 24 hours. Monitor bounces/delivery failures through the provider operationally; an acknowledgement does not waive consumer rights.
 
-## Database foundation
+Account provides a saved confirmation download and basic export schema v3, including complete own legal, purchase-consent and confirmation history. Failed or cross-account reads do not produce misleading partial exports. Account change is rechecked before download. Authentication/session tokens and provider credentials remain excluded.
 
-- Own-account read RLS; no direct client or service-role evidence insert/update/delete.
-- Strict true flags, exact policy version/hash, thirty-minute new-intent expiry and immutable wording/legal snapshots.
-- A separate append-only binding requires the saved attempt identity/plan/consentId and current lease token.
-- Ten new intents per account per ten minutes, serialized by a transaction advisory lock. Existing nonce retries remain available at that limit.
-- Private definer helpers with empty search paths and minimally granted public invoker wrappers.
+## Documents and retention
 
-The SQL remains a proposal, not an applied migration. Generate the migration using the Supabase CLI before deployment. Prerequisites are the deployed legal-acceptance ledger and checkout-attempt schema/functions. The latter source is in backend draft PR20 (fix/checkout-legal-evidence, head62a6682397aeba152c3749b2c368e1d6b4930ad9), including supabase/migrations/20260930144216_checkout_attempt_guard.sql. Coordinate overlapping backend drafts; do not deploy an older create-checkout after this one.
+New pinned release 2026-10-01.1 contains byte-identical public/archive Terms and Privacy, plus an archived Refund document. Exact digests are checked by SQL and source tests. Old 2026-09-30.1 copies and ledger evidence remain intact.
 
-The function used as this change's baseline is live create-checkout v12, SHA256 a002e4316c49b1ca103b046bb9f3bfd24e9be724aef07c3c75808a4dbb484c2d. It is copied into this website draft so the proposed frontend and backend can be reviewed together. Production remains that baseline.
+Privacy describes consent/contract records, transactional Resend delivery, browser retry storage, purpose, export and retention. sessionStorage plus an in-memory fallback preserves retry identity without prechecking consent controls. Unbound expired intents are eligible for removal after 30 days through the bounded service-only purge_unused_purchase_intents procedure (at most 500 per invocation). Run this maintenance regularly after activation. Bound purchase/confirmation records survive that purge. Their final statutory retention and coordinated account deletion remain part of the trader/account lifecycle setup (W24); the schema blocks a raw Auth delete from erasing linked transaction evidence accidentally.
 
 ## Verification
 
-59 Node tests passed: 16 purchase UI, 8 existing legal/account regressions and 35 checkout integration tests with mocked Supabase/Stripe. These execute the actual frontend functions and transpiled Edge Function source. They do not replace live Stripe or browser acceptance. TypeScript syntax was transformed by Node's stripTypeScriptTypes; no full Deno typecheck was available.
+97 Node tests pass: 16 purchase UI, 8 legal/account regressions, 7 account export, 3 confirmation download, 37 checkout integration, 13 webhook regressions/gating and 12 actual shared confirmation-helper tests, plus the public build/link/source-exclusion check. These execute the actual JS/TS source with mocked service boundaries; no actual payment or email is sent. Node stripTypeScriptTypes verifies/transforms TS syntax; a full Deno typecheck and real browser/provider acceptance remain required.
 
-46 SQL assertions passed on Supabase project upiadmvxzphegivqszvp in one BEGIN/ROLLBACK transaction using authenticated, service_role and anon roles. Synthetic auth accounts, proposed schema objects and temporary policy/legal-release rotations were rolled back. A final query confirmed public.checkout_consents does not exist.
+78 SQL assertions pass using actual authenticated/service_role/anon roles in a BEGIN/ROLLBACK transaction on Supabase upiadmvxzphegivqszvp. Covers account/role boundaries, explicit flags, version/Price/time snapshots, nonce identity, lease binding, policy/legal rotation, expiry recovery, rate limiting, immutable contracts, exact document bytes/hash, mail serialization/frozen content/recipient, stale token denial, provider retry horizon, retention and own-record access. Temporary document-current flags, synthetic users and every proposed schema object were rolled back; the live legal release remains 2026-09-30.1.
 
-Coverage includes independent Terms, missing/unchecked flags, stale wording, plan/Price identity, nonce reuse, exact archived wording, server clock, foreign-account access, direct writes, unconfirmed accounts, reservation ownership, attempt binding, replay, policy/legal rotation at validation and binding, expiry recovery, new-attempt denial, account rate limit, anonymous access, concurrent clicks, lease loss, lost Stripe/customer-bind responses, frozen parameters, legacy refusal and redirect validation.
-
-Run source tests:
+Run tests from repository root:
 
 ```sh
-node --test scripts/checkout-consent.test.cjs scripts/legal-acceptance.test.cjs supabase/tests/create-checkout.test.cjs
+node --test scripts/checkout-consent.test.cjs scripts/legal-acceptance.test.cjs scripts/account-export.test.cjs scripts/purchase-confirmations.test.cjs supabase/tests/create-checkout.test.cjs supabase/tests/stripe-webhook.test.cjs supabase/tests/purchase-confirmation.test.cjs
+node scripts/checkout-consent-test-query.mjs > /tmp/w21-test.sql
+psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/w21-test.sql
 ```
 
-Reproduce SQL assertions against a disposable database with the prerequisite schema:
+Use a disposable database with the existing account/legal/checkout/webhook reservation schema. Do not apply a proposal separately to production as a test.
 
-```sh
-node scripts/checkout-consent-test-query.mjs > /tmp/checkout-consent-test.sql
-psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/checkout-consent-test.sql
-```
+## Activation prerequisites and procedure
 
-Do not apply the proposal separately to a live database as a test.
+Existing deployed foundation: legal-acceptance ledger, checkout_attempts and webhook atomic reservation RPCs. The checkout guard source is in backend draft PR20 (fix/checkout-legal-evidence, head 62a6682397aeba152c3749b2c368e1d6b4930ad9). Coordinate overlapping backend drafts; deploying an older checkout or webhook after this one would bypass confirmation enforcement.
 
-## Remaining acceptance and deployment blockers
+Required Supabase Edge Function secrets/config, supplied through secure project settings, never in Git or this chat:
 
-- Produce and retain a durable purchase/contract confirmation containing exact consent evidence and applicable contract information. A browser redirect or Stripe metadata alone is not that confirmation.
-- Finalize contract classification and applicable withdrawal behavior, trader details, private support route and VAT setup before paid launch. This draft introduces no blanket waiver.
-- Update the privacy disclosure and pinned legal release to describe purchase-consent records and browser retry storage before enabling the new flow; include the new evidence in appropriate account exports and determine retention/account deletion handling. Existing pinned documents were deliberately left unchanged.
-- Generate/apply the proposal migration, deploy the function and Account together after prerequisites and confirmation are complete. Rollback must not point a consent-enforcing frontend at a backend that ignores consent.
-- Coordinate W35 real browser/Windows/login/billing acceptance. Source tests are not real payment acceptance.
+- RESEND_API_KEY: a transactional sending key for a verified domain.
+- PURCHASE_CONFIRMATION_FROM: a verified sender email address on that domain.
+- PURCHASE_TRADER_JSON: the actual trader's legal_name, geographic_address, country, support_email and telephone; registration_id/vat_id only if applicable. The implementation does not create a trader identity or make tax assumptions.
 
-No production database migration, UI/function deployment, Stripe setting, payment, legal release or installer was changed by this draft.
+Config is validated before claiming checkout or creating a Stripe customer/session. A missing config yields 503 without billing mutations. Verify the sender and private reply/contact route before enabling purchases. There is no configured sender/domain or trader JSON in this draft; live configuration has not been inferred or fabricated.
+
+Generate actual migrations with supabase migration new before deploying. Apply proposals in this order: purchase-legal-release.sql, checkout-consent.sql, purchase-confirmations.sql. Preserve existing migration history; these proposal filenames are not invented migration versions.
+
+Deploy create-checkout and stripe-webhook with _shared/purchase-confirmation.ts bundled. Keep create-checkout JWT verification on; webhook JWT verification stays off solely because it validates the raw-body Stripe signature. Deploy Account/public/pinned documents matching 2026-10-01.1 together with the new legal release. Pause new purchases during a coordinated legal/function/UI update so old clients cannot silently use the wrong gate. Billing management and account data remain available.
+
+Complete W35 browser/login/provider/live billing acceptance before claiming operational completion. Exercise lost Stripe responses, simultaneous clicks, email failures/acceptance-commit loss, original attempts, cancellation, old legacy records and legal/policy rotation. Verify actual received attachments and subsequent entitlement state. Do not simulate these by charging customers or emailing synthetic fixture users.
+
+Baseline rollback references: production website 5d02fd7c725d82dca2dba0bcee92ed7759f46b05; create-checkout v12 SHA a002e4316c49b1ca103b046bb9f3bfd24e9be724aef07c3c75808a4dbb484c2d; stripe-webhook v11 SHA 1ee879d4be965cbc05040fb631de1fc399ef4bb0a46f877a1a5e65138fd17743. Rolling back only to these older functions would remove new confirmation enforcement. Keep new purchases paused during coordinated rollback and retain immutable evidence/delivery records. Do not discard a paid confirmation or reset an ambiguous provider idempotency key to force progress.
+
+## Sources
+
+- EU Consumer Rights Directive: https://eur-lex.europa.eu/eli/dir/2011/83/oj/eng (Articles 8, 13, 14 and 16; current consolidation also consulted).
+- Commission guidance on durable confirmation: https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A52021XC1229%2804%29.
+- Resend send/attachments: https://resend.com/docs/api-reference/emails/send-email.
+- Resend 24-hour idempotency: https://resend.com/docs/dashboard/emails/idempotency-keys.
+- Stripe subscription-filtered Checkout reads: https://docs.stripe.com/api/checkout/sessions/list.
+
+W21 source work is complete. Actual sender/trader configuration and live activation cannot be represented as completed without those real prerequisites; trader/tax readiness and W35 acceptance remain separate launch blockers.

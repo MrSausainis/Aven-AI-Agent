@@ -1,4 +1,9 @@
 import { readFileSync } from 'node:fs';
-const proposal = readFileSync(new URL('../supabase/proposals/checkout-consent.sql', import.meta.url), 'utf8');
-const tests = readFileSync(new URL('../supabase/tests/checkout-consent.sql', import.meta.url), 'utf8');
-process.stdout.write('BEGIN;\n' + proposal + '\n' + tests + '\nROLLBACK;\n');
+const files = [
+  '../supabase/proposals/purchase-legal-release.sql',
+  '../supabase/proposals/checkout-consent.sql',
+  '../supabase/proposals/purchase-confirmations.sql',
+  '../supabase/tests/checkout-consent.sql',
+  '../supabase/tests/purchase-confirmations.sql',
+];
+process.stdout.write('BEGIN;\n'+files.map(file=>readFileSync(new URL(file,import.meta.url),'utf8')).join('\n')+'\nROLLBACK;\n');

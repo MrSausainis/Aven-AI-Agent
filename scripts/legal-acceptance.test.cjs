@@ -22,7 +22,7 @@ function setup() {
 }
 test('pinned public document copies match the archived SQL bodies and frontend hashes',()=>{
  const {context}=setup();
- const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260930194220_legal_acceptance_ledger.sql'),'utf8');
+ const sql=fs.readFileSync(path.join(__dirname,'../supabase/proposals/purchase-legal-release.sql'),'utf8');
  for(const name of ['terms','privacy']) {
   const content=fs.readFileSync(path.join(__dirname,'../'+name+'-'+context.release.version+'.html'),'utf8');
   const tag='$'+name+'_archive$';

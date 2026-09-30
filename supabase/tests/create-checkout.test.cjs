@@ -34,7 +34,7 @@ function setup() {
   };
   class Stripe {
     constructor(){
-      this.prices={retrieve:async(id)=>({active:s.priceActive,type:'recurring',recurring:{interval:'month'},metadata:{tier_id:id===prices.monthly?'monthly':'annual'},product:{active:true}})};
+      this.prices={retrieve:async(id)=>({active:s.priceActive,type:'recurring',recurring:{interval:'month',interval_count:1},unit_amount:200,currency:'eur',metadata:{tier_id:id===prices.monthly?'monthly':'annual'},product:{active:true}})};
       this.customers={create:async(p,o)=>{
         assert.equal(s.bindings.get(s.attempt.consentId),s.attempt.id,'Evidence bound before customer creation');
         s.customerCreates.push({p:structuredClone(p),key:o.idempotencyKey});
@@ -70,7 +70,7 @@ function setup() {
       if(s.consentDenied || !rec || rec.plan!==p.p_plan)return {error:{code:'42501'}};
       return {data:{...rec,bound_attempt_id:s.bindings.get(rec.id)||null}};
     }};
-  vm.runInNewContext(stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'')),{Stripe,createClient:(_url,_key,options)=>options?asUser:admin,Deno:{env:{get:()=> 'mock'},serve:fn=>handler=fn},Request,Response,crypto:webcrypto,Uint8Array,Date,console:{error:()=>{}}});
+  vm.runInNewContext(stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'')),{commerceConfig:()=>{if(s.configError)throw Error('Missing config');return {from:'receipts@example.invalid',trader:{legal_name:'Fixture'}};},Stripe,createClient:(_url,_key,options)=>options?asUser:admin,Deno:{env:{get:()=> 'mock'},serve:fn=>handler=fn},Request,Response,crypto:webcrypto,Uint8Array,Date,console:{error:()=>{}}});
   function nextConsent(plan='monthly') {
     const id=webcrypto.randomUUID();s.consents.set(id,{id,user_id:'account-test',plan,price_id:prices[plan],rights_preserved:true,policy_version:'policy1',legal_version:'legal1',expires_at:new Date(Date.now()+1800000).toISOString()});s.current??={};s.current[plan]=id;return id;
   }
@@ -225,4 +225,10 @@ test('frozen metadata tampering refuses a retry without rewriting Stripe paramet
 });
 test('changed policy binding blocks session expiration and all new billing mutations',async()=>{
   const {s,send}=setup();await send();s.bindError=true;assert.equal((await send({plan:'annual'})).status,403);assert.equal(s.expires.length,0);assert.equal(s.creates.length,1);
+});
+test('missing verified confirmation/trader setup blocks checkout before claiming or charging',async()=>{
+ const {s,send}=setup();s.configError=true;assert.equal((await send()).status,503);assert.equal(s.tokens,0);assert.equal(s.customerCreates.length,0);assert.equal(s.creates.length,0);
+});
+test('subscription receives immutable evidence metadata and the public offer excludes credentials',async()=>{
+ const {s,send}=setup();assert.equal((await send()).status,200);assert.equal(s.creates[0].p.subscription_data.metadata.checkout_consent,s.attempt.consentId);assert.equal(s.creates[0].p.subscription_data.metadata.checkout_attempt,s.attempt.id);assert.equal(s.attempt.offer.price.currency,'eur');assert.equal(s.attempt.offer.confirmation_from,'receipts@example.invalid');assert.equal(s.attempt.offer.key,undefined);
 });
