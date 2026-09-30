@@ -323,6 +323,11 @@ Deno.serve(async (req: Request) => {
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: "subscription", customer: customerId, client_reference_id: user.id,
         line_items: [{ price: original.priceId, quantity: 1 }],
+        // Collect a billing address and keep it on the bound Stripe Customer
+        // for later subscription invoices. Only new snapshots get this policy;
+        // ambiguous retries must keep their original idempotency parameters.
+        billing_address_collection: "required",
+        customer_update: { address: "auto" },
         success_url: `${ACCOUNT_PAGE_URL}?checkout=success`, cancel_url: `${ACCOUNT_PAGE_URL}?checkout=cancelled`,
         metadata: { aven_plan: attempt!.plan, supabase_uid: user.id, checkout_attempt: attempt!.id },
         integration_identifier: `jysen-checkout-${Array.from(crypto.getRandomValues(new Uint8Array(8)), (n) => String.fromCharCode(97 + n % 26)).join("")}`,
