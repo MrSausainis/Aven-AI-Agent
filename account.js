@@ -38,6 +38,12 @@ const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 const el = (id) => document.getElementById(id);
 
+function canonicalPublicName(value) {
+  const name = value.normalize("NFC").replace(/^ +| +$/g, "").replace(/ +/g, " ");
+  return [...name].length >= 1 && [...name].length <= 32 && /^[\p{L}0-9 _.-]+$/u.test(name) ? name : null;
+}
+const ACCOUNT_NAME_HINT = "Use 1–32 letters, digits, spaces, dots, underscores or hyphens.";
+
 if (DESKTOP_LOGIN_MODE) {
   el("authTitle").textContent = "Connect AvenAI desktop";
   el("authSubtitle").textContent = "Log in here to create a separate secure desktop session.";
@@ -269,14 +275,19 @@ el("su_resend").onclick = async () => {
 
 el("su_submit").onclick = async () => {
   hideMsg("authMsg");
-  const account_name = el("su_name").value.trim();
+  const account_name = canonicalPublicName(el("su_name").value);
   const email = el("su_email").value.trim();
   const password = el("su_pass").value;
 
-  if (!account_name || !email || !password) {
+  if (!el("su_name").value || !email || !password) {
     showMsg("authMsg", "Fill in all three fields.", "error");
     return;
   }
+  if (!account_name) {
+    showMsg("authMsg", ACCOUNT_NAME_HINT, "error");
+    return;
+  }
+  el("su_name").value = account_name;
   if (!el("su_legal").checked) {
     showMsg("authMsg", "Please accept the Terms and read the Privacy Notice before creating an account.", "error");
     return;
@@ -295,7 +306,7 @@ el("su_submit").onclick = async () => {
   if (error) {
     setBusy(el("su_submit"), false, "Create account");
     const msg = (error.message || "").toLowerCase();
-    if (msg.includes("duplicate") || msg.includes("unique") || msg.includes("account_name")) {
+    if (msg.includes("duplicate") || msg.includes("unique")) {
       showMsg("authMsg", "That account name is already taken - try another.", "error");
     } else if (msg.includes("rate") || msg.includes("limit")) {
       showMsg("authMsg", "Too many signup attempts in a short time - wait a few minutes and try again.", "error");
@@ -378,9 +389,9 @@ el("upgradeAnnualBtn").onclick = () => startCheckout("annual");
 
 el("settingsSave").onclick = async () => {
   hideMsg("settingsMsg");
-  const newName = el("settingsName").value.trim();
+  const newName = canonicalPublicName(el("settingsName").value);
   if (!newName) {
-    showMsg("settingsMsg", "Account name can't be empty.", "error");
+    showMsg("settingsMsg", ACCOUNT_NAME_HINT, "error");
     return;
   }
   setBusy(el("settingsSave"), true, "...");
@@ -398,6 +409,7 @@ el("settingsSave").onclick = async () => {
     return;
   }
   showMsg("settingsMsg", "Saved.", "ok");
+  el("settingsName").value = newName;
   el("dashName").textContent = newName;
   el("dashAvatar").textContent = newName.charAt(0).toUpperCase();
 };
