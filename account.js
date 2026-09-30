@@ -646,17 +646,39 @@ function renderThemeSwatches(allowedThemes, preferred){
 
 async function exportAccountData(){
   hideMsg("dataMsg");
-  const { data: { session } } = await supa.auth.getSession();
-  if (!session?.user) { showMsg("dataMsg", "Your session expired. Log in again.", "error"); return; }
   setBusy(el("exportDataBtn"), true, "Preparing...");
   try {
-    const uid = session.user.id;
+    const { data: { user }, error: userError } = await supa.auth.getUser();
+    if (userError || !user) {
+      showMsg("dataMsg", "Could not verify your account. Log in again or retry.", "error");
+      return;
+    }
+    const uid = user.id;
     const [profileResult, entitlementResult, reviewResult] = await Promise.all([
-      supa.from("profiles").select("account_name,created_at,preferred_theme").eq("id", uid).maybeSingle(),
-      supa.from("entitlements").select("tier_id,tier_source,tier_expires_at,preferred_theme,updated_at").eq("id", uid).maybeSingle(),
-      supa.from("reviews").select("rating,body,created_at,updated_at").eq("id", uid).maybeSingle(),
+      supa.from("profiles").select("id,account_name,created_at,preferred_theme").eq("id", uid).maybeSingle(),
+      supa.from("entitlements").select("id,account_name,tier_id,tier_source,tier_expires_at,stripe_customer_id,stripe_subscription_id,stripe_subscription_status,preferred_theme,updated_at").eq("id", uid).maybeSingle(),
+      supa.from("reviews").select("id,account_name,rating,body,created_at,updated_at").eq("id", uid).maybeSingle(),
     ]);
-    const payload = { exported_at:new Date().toISOString(), account:{id:uid,email:session.user.email||null}, profile:profileResult.data||null, entitlement:entitlementResult.data||null, review:reviewResult.data||null, note:"This export contains account data available to the website client. Payment-card data is handled by Stripe and is not stored by this website." };
+    if ([profileResult, entitlementResult, reviewResult].some(result => result.error)
+        || !profileResult.data || !entitlementResult.data
+        || [profileResult.data, entitlementResult.data, reviewResult.data].some(row => row && row.id !== uid)) {
+      throw new Error("Account data could not be fully loaded");
+    }
+    // Select account fields explicitly; never serialize the SDK session/user
+    // object wholesale, which can carry authentication/provider tokens.
+    const payload = {
+      schema_version: 1, scope: "basic_account", exported_at: new Date().toISOString(),
+      account: {
+        id: uid, email: user.email || null, phone: user.phone || null,
+        created_at: user.created_at || null, updated_at: user.updated_at || null,
+        last_sign_in_at: user.last_sign_in_at || null,
+        email_confirmed_at: user.email_confirmed_at || null,
+        phone_confirmed_at: user.phone_confirmed_at || null,
+        is_anonymous: user.is_anonymous === true, user_metadata: user.user_metadata || {},
+      },
+      profile: profileResult.data, entitlement: entitlementResult.data, review: reviewResult.data || null,
+      note: "Basic export of your profile, entitlement, review and selected authentication fields, including user-provided metadata. It does not include payment-provider records, server logs, authentication/session tokens or desktop data. Payment-card data is handled by Stripe and is not stored by this website.",
+    };
     const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="aven-account-data.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     showMsg("dataMsg","Export created locally in your browser.","ok");
