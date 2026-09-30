@@ -1,0 +1,12 @@
+{
+  "operation": "PostPaymentLinksPaymentLink",
+  "stripe_context": "acct_1UCPNvJ78TGxjoZz",
+  "livemode": true,
+  "parameters": {
+    "id": "plink_1UD8DRJ78TGxjoZzE6ZWhmpy",
+    "after_completion": {
+      "type": "redirect",
+      "redirect": { "url": "https://mrsausainis.github.io/Aven-AI-Agent/" }
+    }
+  }
+}
