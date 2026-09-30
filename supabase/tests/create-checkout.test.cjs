@@ -39,6 +39,7 @@ function setup() {
         retrieve:async(id)=>{const session=s.sessions.get(id);if(!session)throw Error('Missing session');return structuredClone(session);},
         expire:async(id)=>{s.expires.push(id);const session=s.sessions.get(id);if(s.expireRace){session.status='complete';throw Error('Session completed');}session.status='expired';session.url=null;return structuredClone(session);},
         create:async(p,o)=>{
+          assert.deepEqual(structuredClone(p),s.attempt.sessionParams,'exact session parameters are committed before Stripe creation');
           s.creates.push({p:structuredClone(p),key:o.idempotencyKey});
           const previous=s.idem.get(o.idempotencyKey);
           if(previous){assert.deepEqual(p,previous.params);return structuredClone(previous.response);}
@@ -112,4 +113,32 @@ test('expired lease cannot create a session or release a replacement owner',asyn
 });
 test('supported price validation and existing paid entitlement are preserved',async()=>{
   const {s,send}=setup();s.priceActive=false;assert.equal((await send()).status,503);s.priceActive=true;s.row.tier_source='stripe';s.row.tier_id='annual';assert.equal((await send()).status,409);assert.equal(s.creates.length,0);
+});
+test('both plans collect and persist the address on the server-bound customer',async()=>{
+  for(const plan of ['monthly','annual'])for(const existingCustomer of ['cus_test',null]) {
+    const {s,send}=setup();s.customer=existingCustomer;
+    assert.equal((await send({plan,customer:'cus_foreign',customer_update:{name:'auto'},automatic_tax:{enabled:true}})).status,200);
+    const p=s.creates[0].p;
+    assert.equal(p.billing_address_collection,'required');
+    assert.deepEqual(p.customer_update,{address:'auto'});
+    assert.equal(p.customer,s.customer);
+    assert.equal(p.line_items[0].price,prices[plan]);
+    assert.equal(p.automatic_tax,undefined);
+    assert.deepEqual(p.managed_payments,{enabled:false});
+  }
+});
+test('legacy frozen requests retain exact parameters until their confirmed expiration',async()=>{
+  const {s,send}=setup();
+  const params={mode:'subscription',customer:s.customer,client_reference_id:'account-test',line_items:[{price:prices.monthly,quantity:1}],metadata:{aven_plan:'monthly',supabase_uid:'account-test',checkout_attempt:'legacy-attempt'},integration_identifier:'legacy-fixed',managed_payments:{enabled:false}};
+  s.attempt={id:'legacy-attempt',startedAt:Date.now(),plan:'monthly',customerParams:{},sessionParams:structuredClone(params)};
+  s.failSaveSession=true;
+  assert.equal((await send()).status,500);
+  assert.deepEqual(s.creates[0].p,params);
+  s.sessions.get('cs_1').status='expired';s.failSaveSession=false;
+  assert.equal((await send()).status,409);
+  assert.deepEqual(s.creates[1],s.creates[0]);
+  assert.equal((await send()).status,200);
+  assert.notEqual(s.creates[2].key,s.creates[0].key);
+  assert.equal(s.creates[2].p.billing_address_collection,'required');
+  assert.deepEqual(s.creates[2].p.customer_update,{address:'auto'});
 });
