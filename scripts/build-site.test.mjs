@@ -28,6 +28,11 @@ test("public build preserves assets/headers and excludes backend and unexpected 
   }
   // Check every local HTML asset/link against the output, including clean URLs.
   for (const file of published.filter((file) => file.endsWith(".html"))) {
+    for (const [tag, src] of readFileSync(join(output, file), "utf8").matchAll(/<script\b[^>]*\bsrc="(https:\/\/[^\"]+)"[^>]*>/g)) {
+      assert.equal(src, "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js", `${file}: external script must have a reviewed version and exact file path`);
+      assert.ok(tag.includes('crossorigin="anonymous"'), `${file}: external SRI script requires CORS`);
+      assert.ok(tag.includes('integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF"'), `${file}: external script lacks its reviewed content hash`);
+    }
     for (const [, link] of readFileSync(join(output, file), "utf8").matchAll(/(?:href|src)="([^"#]+)"/g)) {
       const url = new URL(link, `https://site.invalid/${file}`);
       if (url.origin !== "https://site.invalid") continue;
