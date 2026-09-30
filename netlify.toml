@@ -1,0 +1,6 @@
+[build]
+  command = "node scripts/build-site.mjs"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
