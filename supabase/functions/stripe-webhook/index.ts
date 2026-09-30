@@ -20,6 +20,56 @@ const HANDLED_EVENTS = new Set([
   "checkout.session.completed", "customer.subscription.created",
   "customer.subscription.updated", "customer.subscription.deleted",
 ]);
+const MAX_WEBHOOK_BYTES = 256 * 1024;
+const WEBHOOK_BODY_TIMEOUT_MS = 10000;
+
+class PayloadError extends Error {
+  status: number;
+  constructor(message: string, status: number) { super(message); this.status = status; }
+}
+
+async function boundedBody(req: Request): Promise<string> {
+  const length = req.headers.get("content-length");
+  if (length !== null) {
+    if (!/^\d+$/.test(length) || !Number.isSafeInteger(Number(length))) {
+      throw new PayloadError("Invalid Content-Length", 400);
+    }
+    if (Number(length) > MAX_WEBHOOK_BYTES) throw new PayloadError("Payload too large", 413);
+  }
+  const encoding = req.headers.get("content-encoding");
+  if (encoding && encoding.toLowerCase() !== "identity") {
+    throw new PayloadError("Unsupported Content-Encoding", 415);
+  }
+  if (!req.body) throw new PayloadError("Missing webhook body", 400);
+  const reader = req.body.getReader();
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new PayloadError("Webhook body timed out", 408)), WEBHOOK_BODY_TIMEOUT_MS);
+  });
+  const bytes = new Uint8Array(MAX_WEBHOOK_BYTES);
+  const deadline = Date.now() + WEBHOOK_BODY_TIMEOUT_MS;
+  let total = 0;
+  try {
+    while (true) {
+      if (Date.now() >= deadline) throw new PayloadError("Webhook body timed out", 408);
+      const { done, value } = await Promise.race([reader.read(), timeout]);
+      if (done) break;
+      // Count actual bytes even with missing or dishonest Content-Length.
+      if (total + value.byteLength > MAX_WEBHOOK_BYTES) throw new PayloadError("Payload too large", 413);
+      bytes.set(value, total);
+      total += value.byteLength;
+    }
+    // Preserve the signed UTF-8 text, including a BOM; no parse/reserialize step.
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes.subarray(0, total));
+  } catch (error) {
+    // Do not await cancellation: an adversarial slow producer cannot delay rejection.
+    void reader.cancel().catch(() => {});
+    throw error;
+  } finally {
+    clearTimeout(timer!);
+    try { reader.releaseLock(); } catch { /* Cancellation may still be settling. */ }
+  }
+}
 
 function customerIdOf(value: string | { id: string } | null): string | null {
   return typeof value === "string" ? value : value?.id ?? null;
@@ -88,13 +138,14 @@ async function rpc(name: string, args: Record<string,unknown>) {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") return new Response("Method not allowed",{status:405});
+  if (req.method !== "POST") return new Response("Method not allowed",{status:405,headers:{Allow:"POST"}});
   const signature = req.headers.get("stripe-signature");
   if (!signature) return new Response("Missing stripe-signature header",{status:400});
   let event: Stripe.Event;
   try {
-    event = await stripe.webhooks.constructEventAsync(await req.text(),signature,webhookSecret);
-  } catch {
+    event = await stripe.webhooks.constructEventAsync(await boundedBody(req),signature,webhookSecret);
+  } catch (error) {
+    if (error instanceof PayloadError) return new Response(error.message,{status:error.status});
     return new Response("Invalid signature",{status:400});
   }
   if (!HANDLED_EVENTS.has(event.type)) return new Response("Ignored",{status:200});
