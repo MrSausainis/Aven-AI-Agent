@@ -10,6 +10,7 @@ const output = join(root, "dist");
 const publicFiles = [
   "index.html", "account.html", "donate.html", "404.html",
   "privacy.html", "terms.html", "refunds.html", "cookies.html",
+  "terms-2026-09-30.1.html", "privacy-2026-09-30.1.html",
   "security.html", "accessibility.html",
   "site.css", "site.js", "account.js", "favicon.svg",
   "robots.txt", "sitemap.xml", "extensions_manifest.json",
