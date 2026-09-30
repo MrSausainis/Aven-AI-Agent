@@ -40,12 +40,12 @@ function setup() {
   };
   class Stripe {
     constructor() {
-      this.webhooks={constructEventAsync:async(body)=>{if(state.invalidSignature) throw Error('bad');return JSON.parse(body);}};
+      this.webhooks={constructEventAsync:async(body)=>{state.signatureChecks=(state.signatureChecks??0)+1;state.signedBody=body;if(state.invalidSignature) throw Error('bad');return JSON.parse(body);}};
       this.subscriptions={list:async()=>{state.reads++;if(state.failList)throw Error('network');return {data:state.subs,has_more:state.hasMore};}};
       this.prices={retrieve:async()=>({metadata:{tier_id:'monthly'},product:{metadata:{tier_id:'monthly'}}})};
     }
   }
-  const context={Request,Response,console:{error:()=>{}},Stripe,createClient:()=>admin,Deno:{env:{get:()=> 'mock-secret'},serve:fn=>handler=fn}};
+  const context={Request,Response,TextDecoder,Uint8Array,setTimeout:(fn,ms)=>setTimeout(fn,state.fastBodyTimeout?1:ms),clearTimeout,console:{error:()=>{}},Stripe,createClient:()=>admin,Deno:{env:{get:()=> 'mock-secret'},serve:fn=>handler=fn}};
   vm.runInNewContext(stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'')),context);
   const send=ev=>handler(new Request('https://example.test',{method:'POST',headers:{'stripe-signature':'mock'},body:JSON.stringify(ev)}));
   return {state,send,handler,context};
@@ -100,4 +100,51 @@ test('paused is suspended and unsupported prices fail closed',async()=>{
   const {state,send}=setup();state.subs=[sub('sub_old','paused')];await send(event('evt_paused'));assert.equal(state.row.tier_id,'suspended');
   state.subs=[{...sub('sub_other','active'),items:{data:[{price:{id:'unknown'}}]}}];
   assert.equal((await send(event('evt_unknown'))).status,500);assert.equal(state.row.tier_id,'suspended');
+});
+
+function streamRequest(chunks,headers={},options={}) {
+  const tracker={reads:0,cancelled:false};
+  let index=0;
+  const body=new ReadableStream({
+    pull(controller){tracker.reads++;if(options.stall)return;if(options.fail){controller.error(Error('Read failed'));return;}if(index<chunks.length)controller.enqueue(chunks[index++]);else controller.close();},
+    cancel(){tracker.cancelled=true;return options.slowCancel?new Promise(()=>{}):undefined;},
+  },{highWaterMark:0});
+  return {req:{method:'POST',headers:new Headers({'stripe-signature':'mock',...headers}),body},tracker};
+}
+test('oversized declared body is rejected before reading or signature/database work',async()=>{
+  const {state,handler}=setup();const {req,tracker}=streamRequest([] ,{'content-length':String(256*1024+1)});
+  assert.equal((await handler(req)).status,413);assert.equal(tracker.reads,0);assert.equal(state.signatureChecks??0,0);assert.equal(state.owner,null);
+});
+test('chunked or dishonest length cannot bypass actual byte limit',async()=>{
+  for(const headers of [{},{'content-length':'1'}]){
+    const {state,handler}=setup();const {req,tracker}=streamRequest([new Uint8Array(200*1024),new Uint8Array(100*1024),new Uint8Array(1)],headers);
+    assert.equal((await handler(req)).status,413);assert.equal(tracker.reads,2);assert.ok(tracker.cancelled);assert.equal(state.signatureChecks??0,0);assert.equal(state.owner,null);
+  }
+});
+test('exact byte limit passes unchanged to signature verification',async()=>{
+  const {state,handler}=setup();const text=JSON.stringify({id:'evt_ignored',type:'unhandled'});const raw=text+' '.repeat(256*1024-text.length);const {req}=streamRequest([new TextEncoder().encode(raw)]);
+  assert.equal((await handler(req)).status,200);assert.equal(state.signedBody,raw);assert.equal(state.signatureChecks,1);assert.equal(state.owner,null);
+});
+test('multibyte characters split across chunks retain exact signed UTF-8 text',async()=>{
+  const {state,handler}=setup();const raw=' {"id":"evt_utf8","type":"unhandled","label":"Ž🤙"} \n';const bytes=new TextEncoder().encode(raw);const {req}=streamRequest(Array.from(bytes,b=>new Uint8Array([b])));
+  assert.equal((await handler(req)).status,200);assert.equal(state.signedBody,raw);
+});
+test('malformed content length and compressed payloads never reach verification',async()=>{
+  for(const headers of [{'content-length':'-1'},{'content-length':'1e6'},{'content-length':'9007199254740993'},{'content-encoding':'gzip'}]){
+    const {state,handler}=setup();const {req,tracker}=streamRequest([],headers);
+    assert.equal((await handler(req)).status,headers['content-encoding']?415:400);assert.equal(tracker.reads,0);assert.equal(state.signatureChecks??0,0);
+  }
+});
+test('slow body times out and rejects without awaiting slow cancellation',async()=>{
+  const {state,handler}=setup();state.fastBodyTimeout=true;const {req,tracker}=streamRequest([] ,{}, {stall:true,slowCancel:true});
+  assert.equal((await handler(req)).status,408);assert.ok(tracker.cancelled);assert.equal(state.signatureChecks??0,0);assert.equal(state.owner,null);
+});
+test('stream failure and malformed UTF-8 reject before signature/database work',async()=>{
+  for(const input of [streamRequest([],{}, {fail:true}),streamRequest([new Uint8Array([0xff])])]){
+    const {state,handler}=setup();assert.equal((await handler(input.req)).status,400);assert.equal(state.signatureChecks??0,0);assert.equal(state.owner,null);
+  }
+});
+test('method and missing signature reject before body reader acquisition',async()=>{
+  const {state,handler}=setup();const req={method:'GET',headers:new Headers(),body:{getReader(){throw Error('Body must not be read');}}};
+  const method=await handler(req);assert.equal(method.status,405);assert.equal(method.headers.get('allow'),'POST');req.method='POST';assert.equal((await handler(req)).status,400);assert.equal(state.signatureChecks??0,0);
 });
