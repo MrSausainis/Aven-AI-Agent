@@ -62,7 +62,8 @@
 
     <div id="signupForm" role="tabpanel" aria-labelledby="tabSignup" aria-hidden="false">
       <label for="su_name">Account name</label>
-      <input id="su_name" type="text" autocomplete="username" placeholder="Choose a public account name" />
+      <input id="su_name" type="text" autocomplete="username" maxlength="64" aria-describedby="su_name_hint" placeholder="Choose a public account name" />
+      <small id="su_name_hint">1–32 letters, digits, spaces, dots, underscores or hyphens. Names are unique regardless of letter case.</small>
       <label for="su_email">Email</label>
       <input id="su_email" type="email" autocomplete="email" placeholder="you@example.com" />
       <label for="su_pass">Password</label>
@@ -212,7 +213,7 @@
       <div class="panel">
         <div class="section-title">Account name</div>
         <div class="inline-row">
-          <div><label for="settingsName">Public account name</label><input id="settingsName" type="text" /></div>
+          <div><label for="settingsName">Public account name</label><input id="settingsName" type="text" maxlength="64" aria-describedby="settingsNameHint" /><small id="settingsNameHint">1–32 letters, digits, spaces, dots, underscores or hyphens. Names are unique regardless of letter case.</small></div>
           <button class="btn btn-primary" id="settingsSave">Save</button>
         </div>
         <div class="msg" id="settingsMsg"></div>
