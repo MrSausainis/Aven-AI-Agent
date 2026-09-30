@@ -1,0 +1,30 @@
+-- Deliberately restores the captured pre-W27 client grants/policies; reopens W27.
+begin;
+revoke all privileges on table public.profiles, public.entitlements, public.tiers, public.reviews
+  from public, anon, authenticated;
+revoke update(account_name,preferred_theme) on table public.profiles from authenticated;
+grant DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE on table public.profiles to anon;
+grant DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE on table public.profiles to authenticated;
+grant DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE on table public.entitlements to anon;
+grant DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE on table public.entitlements to authenticated;
+grant DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE on table public.tiers to anon;
+grant DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE on table public.tiers to authenticated;
+grant DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE on table public.reviews to anon;
+grant DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE on table public.reviews to authenticated;
+drop policy "tiers_public_read" on public.tiers;
+create policy "tiers_public_read" on public.tiers for SELECT to public using (true);
+drop policy "profiles_select_own" on public.profiles;
+create policy "profiles_select_own" on public.profiles for SELECT to public using ((( SELECT auth.uid() AS uid) = id));
+drop policy "profiles_update_own" on public.profiles;
+create policy "profiles_update_own" on public.profiles for UPDATE to public using ((( SELECT auth.uid() AS uid) = id));
+drop policy "reviews_delete_own" on public.reviews;
+create policy "reviews_delete_own" on public.reviews for DELETE to public using ((( SELECT auth.uid() AS uid) = id));
+drop policy "reviews_insert_own" on public.reviews;
+create policy "reviews_insert_own" on public.reviews for INSERT to public with check ((( SELECT auth.uid() AS uid) = id));
+drop policy "reviews_select_all" on public.reviews;
+create policy "reviews_select_all" on public.reviews for SELECT to public using (true);
+drop policy "reviews_update_own" on public.reviews;
+create policy "reviews_update_own" on public.reviews for UPDATE to public using ((( SELECT auth.uid() AS uid) = id));
+drop policy "entitlements_select_own" on public.entitlements;
+create policy "entitlements_select_own" on public.entitlements for SELECT to public using ((( SELECT auth.uid() AS uid) = id));
+commit;
