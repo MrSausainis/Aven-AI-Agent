@@ -7,7 +7,9 @@
       "description": "Voice-controlled OBS (start/stop stream, switch scenes, mute sources, save a clip) plus live-status checks and chat posting on Twitch, Kick, and YouTube.",
       "version": "1.2.0",
       "tier_flag": "streamer_tools_enabled",
-      "download_url": "https://github.com/MrSausainis/Aven-AI-Agent/releases/download/extensions/obs_streamer_tools.zip"
+      "download_url": "https://github.com/MrSausainis/Aven-AI-Agent/releases/download/extensions/obs_streamer_tools.zip",
+      "sha256": "60a3379072083d788d59a32953f1bf3d468124f93109b64a493521d6a2452aeb",
+      "package_size_bytes": 12037
     }
   ]
 }
