@@ -191,6 +191,9 @@
       <div class="panel">
         <h3>Billing</h3>
         <p class="panel-lede">Checkout is handled by Stripe. AvenAI does not store card details on this website.</p>
+        <p class="panel-lede">Manage an existing Stripe subscription, payment method or invoice history. Cancelling renewal keeps access through the current billing period. Free and manually granted plans do not have a Stripe subscription to cancel.</p>
+        <button class="btn btn-secondary" id="billingManageBtn">Manage billing</button>
+        <div class="msg" id="billingMsg" role="status" aria-live="polite"></div>
       </div>
     </section>
 
@@ -220,7 +223,7 @@
       </div>
       <div class="panel">
         <div class="section-title">Your data</div>
-        <p class="panel-lede">Download a basic export of your profile, plan and billing identifiers, review and selected sign-in account details, or remove your public review. Payment-provider records, server logs and desktop data are not included. Full account deletion and subscription cancellation remain commercial-launch blockers.</p>
+        <p class="panel-lede">Download a basic export of your profile, plan and billing identifiers, review and selected sign-in account details, or remove your public review. Payment-provider records, server logs and desktop data are not included. Manage subscription renewal from the Billing panel. Full account deletion remains a commercial-launch blocker.</p>
         <div class="data-actions"><button class="btn btn-secondary" id="exportDataBtn">Export account data</button><button class="btn btn-quiet danger-action" id="deleteReviewBtn">Delete my review</button></div>
         <div class="msg" id="dataMsg" aria-live="polite"></div>
         <div class="account-legal-links"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="refunds.html">Refunds</a><a href="cookies.html">Tracking</a><a href="security.html">Security</a></div>

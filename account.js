@@ -387,6 +387,30 @@ async function startCheckout(tierKey) {
 el("upgradeMonthlyBtn").onclick = () => startCheckout("monthly");
 el("upgradeAnnualBtn").onclick = () => startCheckout("annual");
 
+async function openBillingPortal() {
+  hideMsg("billingMsg");
+  setBusy(el("billingManageBtn"), true, "Opening billing...");
+  try {
+    const { data, error } = await supa.functions.invoke("create-billing-portal", { body: {} });
+    if (error) {
+      let message = "Could not open billing management. Try again in a moment.";
+      try { message = (await error.context.json()).error || message; } catch {}
+      showMsg("billingMsg", message, "error");
+      return;
+    }
+    const target = new URL(data?.url);
+    if (target.protocol !== "https:" || target.hostname !== "billing.stripe.com" || target.username || target.password || target.port) {
+      throw new Error("Invalid billing URL");
+    }
+    window.location.href = target.href;
+  } catch {
+    showMsg("billingMsg", "Could not open billing management. Try again in a moment.", "error");
+  } finally {
+    setBusy(el("billingManageBtn"), false, "Manage billing");
+  }
+}
+el("billingManageBtn").onclick = openBillingPortal;
+
 el("settingsSave").onclick = async () => {
   hideMsg("settingsMsg");
   const newName = canonicalPublicName(el("settingsName").value);
@@ -592,6 +616,9 @@ async function refreshSession(){
     showMsg("dashMsg", "Checkout completed. Stripe may take a moment to refresh your plan access.", "ok");
   } else if (checkoutState === "cancelled") {
     showMsg("dashMsg", "Checkout was cancelled. Your current plan was not changed.", "warn");
+  }
+  if (params.get("billing") === "return") {
+    showMsg("dashMsg", "Returned from Stripe. Your plan has been refreshed; billing changes can take a moment to sync.", "ok");
   }
 
   renderFeatures(effectiveEntitlement.tiers || {});
