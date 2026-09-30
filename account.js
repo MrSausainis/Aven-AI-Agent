@@ -134,37 +134,51 @@ document.querySelectorAll("[data-open-section]").forEach((btn) => {
   btn.onclick = () => openDashboardSection(btn.dataset.openSection);
 });
 
-el("tabSignup").onclick = () => {
-  el("tabSignup").classList.add("active");
-  el("tabLogin").classList.remove("active");
-  el("signupForm").classList.remove("hidden");
-  fadeIn("signupForm");
-  el("loginForm").classList.add("hidden");
+const authTabs = [
+  { name: "signup", tab: el("tabSignup"), panel: el("signupForm") },
+  { name: "login", tab: el("tabLogin"), panel: el("loginForm") },
+];
+
+function selectAuthTab(name, focusTab = false) {
+  authTabs.forEach(({ name: tabName, tab, panel }) => {
+    const selected = tabName === name;
+    tab.classList.toggle("active", selected);
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    panel.classList.toggle("hidden", !selected);
+    panel.setAttribute("aria-hidden", String(!selected));
+    if (selected) fadeIn(panel);
+  });
   el("forgotForm").classList.add("hidden");
   hideMsg("authMsg");
-};
-el("tabLogin").onclick = () => {
-  el("tabLogin").classList.add("active");
-  el("tabSignup").classList.remove("active");
-  el("loginForm").classList.remove("hidden");
-  fadeIn("loginForm");
-  el("signupForm").classList.add("hidden");
-  el("forgotForm").classList.add("hidden");
-  hideMsg("authMsg");
-};
+  if (focusTab) authTabs.find(({ name: tabName }) => tabName === name)?.tab.focus();
+}
+
+authTabs.forEach(({ name, tab }, index) => {
+  tab.onclick = () => selectAuthTab(name);
+  tab.onkeydown = (event) => {
+    let nextIndex = null;
+    if (event.key === "ArrowRight") nextIndex = (index + 1) % authTabs.length;
+    if (event.key === "ArrowLeft") nextIndex = (index - 1 + authTabs.length) % authTabs.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = authTabs.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    selectAuthTab(authTabs[nextIndex].name, true);
+  };
+});
 
 el("forgotLink").onclick = (e) => {
   e.preventDefault();
   hideMsg("authMsg");
   el("loginForm").classList.add("hidden");
+  el("loginForm").setAttribute("aria-hidden", "true");
   el("forgotForm").classList.remove("hidden");
   el("forgot_email").value = el("li_email").value;
 };
 el("backToLoginLink").onclick = (e) => {
   e.preventDefault();
-  hideMsg("authMsg");
-  el("forgotForm").classList.add("hidden");
-  el("loginForm").classList.remove("hidden");
+  selectAuthTab("login");
 };
 el("forgot_submit").onclick = async () => {
   hideMsg("authMsg");
@@ -200,10 +214,7 @@ el("recovery_submit").onclick = async () => {
   }
   showWrap("auth");
   el("recoveryForm").classList.add("hidden");
-  el("loginForm").classList.remove("hidden");
-  el("tabLogin").classList.add("active");
-  el("tabSignup").classList.remove("active");
-  el("signupForm").classList.add("hidden");
+  selectAuthTab("login");
   showMsg("authMsg", "Password updated - you're logged in.", "ok");
   await refreshSession();
 };
