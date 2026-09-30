@@ -515,7 +515,7 @@ async function refreshSession(){
   const { data: entitlement } = await supa.from("entitlements")
     .select("tier_id, tier_source, tier_expires_at, preferred_theme, tiers(display_name, cloud_enabled, " +
             "widgets_enabled, music_player_enabled, office_tools_enabled, " +
-            "streamer_tools_enabled, priority_support, allowed_themes, future_updates)")
+            "streamer_tools_enabled, allowed_themes, future_updates)")
     .eq("id", uid).maybeSingle();
 
   if (!profile || !entitlement) {
@@ -528,7 +528,7 @@ async function refreshSession(){
   if (Number.isFinite(expiresAt) && expiresAt <= Date.now()) {
     const { data: freeTier } = await supa.from("tiers")
       .select("display_name, cloud_enabled, widgets_enabled, music_player_enabled, " +
-              "office_tools_enabled, streamer_tools_enabled, priority_support, " +
+              "office_tools_enabled, streamer_tools_enabled, " +
               "allowed_themes, future_updates")
       .eq("tier_id", "free").maybeSingle();
     effectiveEntitlement = {
@@ -606,7 +606,6 @@ function renderFeatures(tier){
     ["Music player", tier.music_player_enabled],
     ["Office Automation (Excel/CSV, folder tidy, screenshots)", tier.office_tools_enabled],
     ["Streamer tools extension (OBS control)", tier.streamer_tools_enabled],
-    ["Priority support", tier.priority_support],
   ];
   el("featuresList").innerHTML = rows.map(([name, on]) => `
     <div class="feature-row ${on ? "on" : "off"}">
