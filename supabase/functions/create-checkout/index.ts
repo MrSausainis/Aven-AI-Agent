@@ -12,8 +12,8 @@
 // - caller identity comes only from the verified Supabase JWT
 // ============================================================================
 
-import { createClient } from "npm:@supabase/supabase-js@2";
-import Stripe from "npm:stripe@17.0.0";
+import { createClient } from "npm:@supabase/supabase-js@2.95.0";
+import Stripe from "npm:stripe@22.6.0";
 
 const ACCOUNT_PAGE_URL = "https://get-avenai.netlify.app/account";
 const WEBSITE_ORIGIN = "https://get-avenai.netlify.app";
@@ -42,8 +42,53 @@ const corsHeaders = {
 };
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2026-08-26.dahlia",
+  timeout: 20000,
+  maxNetworkRetries: 1,
 });
+
+class CheckoutError extends Error {
+  status: number;
+  constructor(message: string, status = 409) { super(message); this.status = status; }
+}
+
+type Attempt = {
+  id: string;
+  startedAt: number;
+  plan: PlanId;
+  customerParams: Stripe.CustomerCreateParams;
+  sessionParams?: Stripe.Checkout.SessionCreateParams;
+  sessionId?: string;
+};
+
+// Bound every scan. Incomplete Stripe reads must never authorize a new checkout.
+async function listAll<T extends { id: string }>(fetchPage: (cursor?: string) => Promise<{ data: T[]; has_more: boolean }>) {
+  const rows: T[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 5; page++) {
+    const result = await fetchPage(cursor);
+    rows.push(...result.data);
+    if (!result.has_more) return rows;
+    if (!result.data.length) break;
+    cursor = result.data[result.data.length - 1].id;
+  }
+  throw new CheckoutError("Could not verify existing billing state. Try again later.", 503);
+}
+
+function assertOwner(session: Stripe.Checkout.Session, customerId: string, userId: string) {
+  const customer = typeof session.customer === "string" ? session.customer : session.customer?.id;
+  if (customer !== customerId || session.client_reference_id !== userId || session.mode !== "subscription") {
+    throw new CheckoutError("Existing checkout requires billing support.");
+  }
+}
+
+function assertRetryWindow(attempt: Attempt) {
+  // Stripe can prune idempotency keys after 24h. Never repeat an ambiguous
+  // create outside a conservative window; a lost response requires recovery.
+  if (!Number.isFinite(attempt.startedAt) || Date.now() - attempt.startedAt >= 23 * 3600000) {
+    throw new CheckoutError("An earlier checkout needs billing support before retrying.");
+  }
+}
 
 function jsonResponse(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -89,6 +134,9 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
+  let admin: ReturnType<typeof createClient> | undefined;
+  let ownerId: string | undefined;
+  let token: string | undefined;
   try {
     let body: Record<string, unknown>;
     try {
@@ -97,6 +145,9 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Invalid JSON body" }, 400);
     }
 
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return jsonResponse({ error: "Invalid checkout body" }, 400);
+    }
     const plan = resolveRequestedPlan(body);
     if (!plan) {
       return jsonResponse({ error: "Unknown or unsupported AVEN plan" }, 400);
@@ -121,6 +172,21 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    admin = supabaseAdmin;
+    ownerId = user.id;
+    const { data: claim, error: claimError } = await admin.rpc("claim_checkout", { p_user_id: user.id });
+    if (claimError || !claim) throw new Error("Checkout claim failed");
+    if (claim.state === "busy") return jsonResponse({ error: "Checkout is already being prepared. Try again in a moment." }, 409);
+    if (claim.state !== "claimed" || !claim.token) throw new Error("Invalid checkout claim");
+    token = claim.token;
+    let attempt: Attempt | null = claim.attempt?.id ? claim.attempt : null;
+    const save = async (next: Attempt | null, customerId: string | null = null) => {
+      const { error } = await supabaseAdmin.rpc("save_checkout_attempt", {
+        p_user_id: user.id, p_token: token, p_attempt: next ?? {}, p_customer_id: customerId,
+      });
+      if (error) throw new Error("Checkout snapshot commit failed");
+      attempt = next;
+    };
 
     // Server-side price validation. Even if the client tampers with its body,
     // only the exact production AVEN price IDs above can reach this point.
@@ -175,55 +241,119 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    let customerId: string | null | undefined = entitlement.stripe_customer_id;
-    if (!customerId) {
-      const customer = await stripe.customers.create(
-        {
-          email: user.email ?? undefined,
-          metadata: { supabase_uid: user.id },
-        },
-        { idempotencyKey: `aven-customer-${user.id}` },
-      );
-      customerId = customer.id;
+    let customerId: string | null = entitlement.stripe_customer_id;
+    let open: Stripe.Checkout.Session[] = [];
+    if (customerId) {
+      const subscriptions = await listAll<Stripe.Subscription>((cursor) => stripe.subscriptions.list({
+        customer: customerId!, status: "all", limit: 100, ...(cursor ? { starting_after: cursor } : {}),
+      }));
+      if (subscriptions.some((s) => !["canceled", "incomplete_expired"].includes(s.status))) {
+        throw new CheckoutError("A subscription already exists. Manage it instead of starting another.");
+      }
+      open = (await listAll<Stripe.Checkout.Session>((cursor) => stripe.checkout.sessions.list({
+        customer: customerId!, status: "open", limit: 100, ...(cursor ? { starting_after: cursor } : {}),
+      }))).filter((s) => s.mode === "subscription");
+      if (open.length > 1) throw new CheckoutError("Multiple existing checkouts require billing support.");
+      for (const session of open) assertOwner(session, customerId, user.id);
+    }
 
-      const { data: updated, error: updateError } = await supabaseAdmin
-        .from("entitlements")
-        .update({ stripe_customer_id: customerId })
-        .eq("id", user.id)
-        .select("id");
-
-      if (updateError || !updated || updated.length === 0) {
-        console.error("create-checkout: failed to persist stripe_customer_id", updateError?.message);
-        return jsonResponse({ error: "Could not prepare checkout" }, 500);
+    // Adopt a single pre-migration open checkout, or recover a response lost
+    // after Stripe created our session but before its ID was committed.
+    if (open.length) {
+      const session = open[0];
+      if (attempt && session.id !== attempt.sessionId && session.metadata?.checkout_attempt !== attempt.id) {
+        throw new CheckoutError("Another unfinished checkout requires billing support.");
+      }
+      if (!attempt) {
+        const lines = await stripe.checkout.sessions.listLineItems(session.id, { limit: 2 });
+        const previousPlan = lines.data.length === 1 && !lines.has_more && lines.data[0].quantity === 1
+          ? PRICE_TO_PLAN.get(lines.data[0].price?.id ?? "") : null;
+        if (!previousPlan) throw new CheckoutError("Existing checkout uses an unsupported plan.");
+        await save({ id: crypto.randomUUID(), startedAt: Date.now(), plan: previousPlan, customerParams: {}, sessionId: session.id });
+      } else if (!attempt.sessionId) {
+        await save({ ...attempt, sessionId: session.id });
       }
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer: customerId,
-      client_reference_id: user.id,
-      line_items: [{ price: expected.priceId, quantity: 1 }],
-      success_url: `${ACCOUNT_PAGE_URL}?checkout=success`,
-      cancel_url: `${ACCOUNT_PAGE_URL}?checkout=cancelled`,
-      metadata: {
-        aven_plan: plan,
-        supabase_uid: user.id,
-      },
-      // Preserve the production workaround already required by this Stripe
-      // account. Without this, Checkout previously failed on missing product
-      // tax-code requirements from Managed Payments.
-      // @ts-ignore - supported by Stripe even if absent from this SDK's TS types.
-      managed_payments: { enabled: false },
-    });
-
-    if (!session.url) {
-      console.error(`create-checkout: Stripe session ${session.id} returned no URL`);
-      return jsonResponse({ error: "Checkout is temporarily unavailable" }, 502);
+    if (attempt?.sessionId) {
+      let session = await stripe.checkout.sessions.retrieve(attempt.sessionId);
+      assertOwner(session, customerId!, user.id);
+      if (session.status === "complete") {
+        const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+        if (!subscriptionId) throw new CheckoutError("Previous checkout is still being processed.");
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const customer = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+        if (customer !== customerId || !["canceled", "incomplete_expired"].includes(subscription.status)) {
+          throw new CheckoutError("Previous checkout is complete. Manage the existing subscription.");
+        }
+      } else if (session.status === "open") {
+        if (attempt.plan === plan) {
+          if (!session.url) throw new CheckoutError("Checkout is temporarily unavailable.", 502);
+          return jsonResponse({ url: session.url });
+        }
+        // Renew/fence ownership before the external mutation. Stripe expiration
+        // wins or completion wins; never start the replacement on ambiguity.
+        await save(attempt);
+        session = await stripe.checkout.sessions.expire(session.id);
+        if (session.status !== "expired") throw new CheckoutError("Previous checkout could not be closed.");
+      } else if (session.status !== "expired") {
+        throw new CheckoutError("Previous checkout status is unavailable.", 503);
+      }
+      await save(null);
     }
 
+    if (!attempt) {
+      await save({ id: crypto.randomUUID(), startedAt: Date.now(), plan,
+        customerParams: { ...(user.email ? { email: user.email } : {}), metadata: { supabase_uid: user.id } },
+      });
+    }
+    // An unresolved old-plan create must be recovered with its original exact
+    // parameters, never with the newly clicked plan's parameters.
+    assertRetryWindow(attempt!);
+    if (!customerId) {
+      await save(attempt);
+      const customer = await stripe.customers.create(attempt!.customerParams, {
+        idempotencyKey: `jysen-customer-${attempt!.id}`,
+      });
+      customerId = customer.id;
+      await save(attempt, customerId);
+    }
+    if (!attempt!.sessionParams) {
+      const original = PLANS[attempt!.plan];
+      const sessionParams: Stripe.Checkout.SessionCreateParams = {
+        mode: "subscription", customer: customerId, client_reference_id: user.id,
+        line_items: [{ price: original.priceId, quantity: 1 }],
+        success_url: `${ACCOUNT_PAGE_URL}?checkout=success`, cancel_url: `${ACCOUNT_PAGE_URL}?checkout=cancelled`,
+        metadata: { aven_plan: attempt!.plan, supabase_uid: user.id, checkout_attempt: attempt!.id },
+        integration_identifier: `jysen-checkout-${Array.from(crypto.getRandomValues(new Uint8Array(8)), (n) => String.fromCharCode(97 + n % 26)).join("")}`,
+        // Existing production workaround: Managed Payments requires tax codes.
+        managed_payments: { enabled: false },
+      };
+      await save({ ...attempt!, sessionParams });
+    }
+    if (attempt!.sessionParams!.customer !== customerId) throw new Error("Checkout customer changed");
+    await save(attempt);
+    const createdSession = await stripe.checkout.sessions.create(attempt!.sessionParams!, {
+      idempotencyKey: `jysen-checkout-${attempt!.id}`,
+    });
+    assertOwner(createdSession, customerId!, user.id);
+    await save({ ...attempt!, sessionId: createdSession.id });
+    const session = await stripe.checkout.sessions.retrieve(createdSession.id);
+    assertOwner(session, customerId!, user.id);
+    // A recovered create may return a historical complete/expired snapshot.
+    // Retrieve on the next request rather than return an obsolete cached URL.
+    if (attempt!.plan !== plan || session.status !== "open" || !session.url) {
+      throw new CheckoutError("Earlier checkout recovered. Retry to continue with the selected plan.");
+    }
     return jsonResponse({ url: session.url });
   } catch (err) {
-    console.error("create-checkout error:", err);
+    if (err instanceof CheckoutError) return jsonResponse({ error: err.message }, err.status);
+    console.error("create-checkout: billing preparation failed");
     return jsonResponse({ error: "Could not start checkout" }, 500);
+  } finally {
+    if (admin && ownerId && token) {
+      const { error } = await admin.rpc("release_checkout", { p_user_id: ownerId, p_token: token });
+      if (error) console.error("create-checkout: lease release failed; bounded expiry will recover it");
+    }
   }
 });
