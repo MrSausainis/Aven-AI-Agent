@@ -51,7 +51,8 @@ function setup() {
       }};
     }
   }
-  const asUser={auth:{getUser:async()=>s.auth?{data:{user:{id:'account-test',email:s.email}}}:{error:{message:'bad token'}}}};
+  const asUser={auth:{getUser:async()=>s.auth?{data:{user:{id:'account-test',email:s.email}}}:{error:{message:'bad token'}}},
+    rpc:async name=>{assert.equal(name,'get_legal_acceptance_status');return s.legalError?{error:{message:'Unavailable'}}:{data:s.legalMissing?null:{accepted:s.legalAccepted!==false}};}};
   vm.runInNewContext(stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'')),{Stripe,createClient:(_url,_key,options)=>options?asUser:admin,Deno:{env:{get:()=> 'mock'},serve:fn=>handler=fn},Request,Response,crypto:webcrypto,Uint8Array,Date,console:{error:()=>{}}});
   const send=(body={plan:'monthly'})=>handler(new Request('https://example.invalid',{method:'POST',body:JSON.stringify(body)}));
   const legacy=(plan='monthly')=>({id:'cs_legacy',status:'open',mode:'subscription',customer:s.customer,client_reference_id:'account-test',metadata:{aven_plan:plan},price:prices[plan],url:'https://checkout.stripe.com/legacy'});
@@ -141,4 +142,18 @@ test('legacy frozen requests retain exact parameters until their confirmed expir
   assert.notEqual(s.creates[2].key,s.creates[0].key);
   assert.equal(s.creates[2].p.billing_address_collection,'required');
   assert.deepEqual(s.creates[2].p.customer_update,{address:'auto'});
+});
+test('missing current Terms acceptance blocks both plans before billing mutations',async()=>{
+  for(const plan of ['monthly','annual']) {
+    const {s,send}=setup();s.legalAccepted=false;
+    assert.equal((await send({plan,terms_accepted:true})).status,403);
+    assert.equal(s.creates.length,0);assert.equal(s.customerCreates.length,0);assert.equal(s.owner,null);assert.equal(s.busyReads,0);
+  }
+});
+test('legal status outage or missing response fails closed without billing mutations',async()=>{
+  for(const mode of ['legalError','legalMissing']) {
+    const {s,send}=setup();s[mode]=true;
+    assert.equal((await send()).status,503);
+    assert.equal(s.creates.length,0);assert.equal(s.customerCreates.length,0);assert.equal(s.owner,null);
+  }
 });
