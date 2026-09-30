@@ -1,0 +1,115 @@
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const {stripTypeScriptTypes} = require('node:module');
+const {webcrypto} = require('node:crypto');
+const source = fs.readFileSync(path.join(__dirname,'../functions/create-checkout/index.ts'),'utf8');
+const prices = {monthly:'price_1UCPzSJ78TGxjoZzD8Pc4ppZ',annual:'price_1UD87kJ78TGxjoZzyIHNEkQG'};
+function setup() {
+  const s = {attempt:{},owner:null,tokens:0,email:'test@example.invalid',customer:'cus_test',subs:[],sessions:new Map(),idem:new Map(),customers:new Map(),creates:[],customerCreates:[],expires:[],busyReads:0,failSaveSession:false,failCustomerBind:false,failSnapshot:false,loseCreateResponse:false,failList:false,hasMore:false,expireRace:false,auth:true,priceActive:true,foreign:false,row:{id:'account-test',tier_id:'free',tier_source:'signup'}};
+  let handler;
+  const admin = {
+    from:()=>{const q={select:()=>q,eq:()=>q,maybeSingle:async()=>({data:{...s.row,stripe_customer_id:s.customer},error:null})};return q;},
+    rpc:async(name,p)=>{
+      if(name==='claim_checkout') {
+        if(s.owner)return {data:{state:'busy'}};
+        s.owner=`token-${++s.tokens}`;
+        return {data:{state:'claimed',token:s.owner,attempt:structuredClone(s.attempt)}};
+      }
+      if(name==='release_checkout'){if(s.owner===p.p_token)s.owner=null;return {data:null};}
+      assert.equal(name,'save_checkout_attempt');
+      if(s.owner!==p.p_token || s.failSnapshot || (s.failCustomerBind && p.p_customer_id) || (s.failSaveSession && p.p_attempt.sessionId))return {error:{message:'DB unavailable or stale token'}};
+      s.attempt=structuredClone(p.p_attempt);if(p.p_customer_id)s.customer=p.p_customer_id;return {data:null};
+    },
+  };
+  class Stripe {
+    constructor(){
+      this.prices={retrieve:async(id)=>({active:s.priceActive,type:'recurring',recurring:{interval:'month'},metadata:{tier_id:id===prices.monthly?'monthly':'annual'},product:{active:true}})};
+      this.customers={create:async(p,o)=>{
+        s.customerCreates.push({p:structuredClone(p),key:o.idempotencyKey});
+        if(!s.customers.has(o.idempotencyKey))s.customers.set(o.idempotencyKey,{id:`cus_${s.customers.size+1}`});
+        return s.customers.get(o.idempotencyKey);
+      }};
+      this.subscriptions={list:async()=>{s.busyReads++;if(s.listGate)await s.listGate;if(s.failList)throw Error('Stripe down');return {data:s.subs,has_more:s.hasMore};},retrieve:async(id)=>s.subs.find(x=>x.id===id)};
+      this.checkout={sessions:{
+        list:async()=>({data:[...s.sessions.values()].filter(x=>x.status==='open'),has_more:false}),
+        listLineItems:async(id)=>({data:[{price:{id:s.sessions.get(id).price},quantity:1}],has_more:false}),
+        retrieve:async(id)=>{const session=s.sessions.get(id);if(!session)throw Error('Missing session');return structuredClone(session);},
+        expire:async(id)=>{s.expires.push(id);const session=s.sessions.get(id);if(s.expireRace){session.status='complete';throw Error('Session completed');}session.status='expired';session.url=null;return structuredClone(session);},
+        create:async(p,o)=>{
+          s.creates.push({p:structuredClone(p),key:o.idempotencyKey});
+          const previous=s.idem.get(o.idempotencyKey);
+          if(previous){assert.deepEqual(p,previous.params);return structuredClone(previous.response);}
+          const session={id:`cs_${s.sessions.size+1}`,status:'open',mode:p.mode,customer:p.customer,client_reference_id:p.client_reference_id,metadata:p.metadata,url:`https://checkout.stripe.com/test/${s.sessions.size+1}`,price:p.line_items[0].price};
+          s.sessions.set(session.id,session);s.idem.set(o.idempotencyKey,{params:structuredClone(p),response:structuredClone(session)});
+          if(s.loseCreateResponse){s.loseCreateResponse=false;throw Error('Response lost');}
+          return structuredClone(session);
+        },
+      }};
+    }
+  }
+  const asUser={auth:{getUser:async()=>s.auth?{data:{user:{id:'account-test',email:s.email}}}:{error:{message:'bad token'}}}};
+  vm.runInNewContext(stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'')),{Stripe,createClient:(_url,_key,options)=>options?asUser:admin,Deno:{env:{get:()=> 'mock'},serve:fn=>handler=fn},Request,Response,crypto:webcrypto,Uint8Array,Date,console:{error:()=>{}}});
+  const send=(body={plan:'monthly'})=>handler(new Request('https://example.invalid',{method:'POST',body:JSON.stringify(body)}));
+  const legacy=(plan='monthly')=>({id:'cs_legacy',status:'open',mode:'subscription',customer:s.customer,client_reference_id:'account-test',metadata:{aven_plan:plan},price:prices[plan],url:'https://checkout.stripe.com/legacy'});
+  return {s,send,legacy};
+}
+test('repeated requests reuse the same open session and key',async()=>{
+  const {s,send}=setup();const a=await send();const b=await send({price_id:prices.monthly});assert.equal(a.status,200);assert.deepEqual(await a.json(),await b.json());assert.equal(s.creates.length,1);assert.ok(s.creates[0].key.includes(s.attempt.id));assert.equal(s.owner,null);
+});
+test('simultaneous requests serialize account-wide across plans',async()=>{
+  const {s,send}=setup();let release;s.listGate=new Promise(r=>release=r);const a=send();while(!s.busyReads)await new Promise(r=>setImmediate(r));assert.equal((await send({plan:'annual'})).status,409);assert.equal(s.creates.length,0);release();assert.equal((await a).status,200);assert.equal(s.creates.length,1);
+});
+test('switching plans expires the old link before creating replacement',async()=>{
+  const {s,send}=setup();await send();const previous=s.attempt.sessionId;assert.equal((await send({plan:'annual'})).status,200);assert.deepEqual(s.expires,[previous]);assert.equal(s.sessions.get(previous).status,'expired');assert.notEqual(s.creates[0].key,s.creates[1].key);assert.equal(s.creates[1].p.line_items[0].price,prices.annual);
+});
+test('completion racing expiration blocks replacement',async()=>{
+  const {s,send}=setup();await send();s.expireRace=true;assert.equal((await send({plan:'annual'})).status,500);assert.equal(s.creates.length,1);
+});
+test('response lost after Stripe create is recovered without another session',async()=>{
+  const {s,send}=setup();s.loseCreateResponse=true;assert.equal((await send()).status,500);const id=s.attempt.id;assert.equal((await send()).status,200);assert.equal(s.attempt.id,id);assert.equal(s.sessions.size,1);assert.equal(s.creates.length,1);
+});
+test('DB failure after create preserves snapshot and retry reuses session',async()=>{
+  const {s,send}=setup();s.failSaveSession=true;assert.equal((await send()).status,500);const params=structuredClone(s.attempt.sessionParams);assert.ok(params);s.failSaveSession=false;s.email='changed@example.invalid';assert.equal((await send()).status,200);assert.deepEqual(s.attempt.sessionParams,params);assert.equal(s.sessions.size,1);
+});
+test('ambiguous creation retries with frozen parameters and key',async()=>{
+  const {s,send}=setup();s.failSaveSession=true;await send();const session=s.sessions.get('cs_1');session.status='expired';s.failSaveSession=false;assert.equal((await send()).status,409);assert.equal(s.creates.length,2);assert.equal(s.creates[0].key,s.creates[1].key);assert.deepEqual(s.creates[0].p,s.creates[1].p);assert.equal(s.sessions.size,1);assert.equal((await send()).status,200);assert.equal(s.sessions.size,2);
+});
+test('Stripe subscription blocks checkout before webhook entitlement catches up',async()=>{
+  const {s,send}=setup();for(const status of ['active','trialing','past_due','unpaid','paused','incomplete']){s.subs=[{id:'sub_existing',status}];assert.equal((await send()).status,409);}assert.equal(s.creates.length,0);
+});
+test('completed checkout blocks another purchase with webhook lag',async()=>{
+  const {s,send}=setup();await send();const old=s.sessions.get('cs_1');old.status='complete';assert.equal((await send()).status,409);assert.equal(s.creates.length,1);
+});
+test('expired sessions rotate key; canceled subscription can resubscribe',async()=>{
+  const {s,send}=setup();await send();s.sessions.get('cs_1').status='expired';assert.equal((await send()).status,200);const current=s.sessions.get('cs_2');current.status='complete';current.subscription='sub_old';s.subs=[{id:'sub_old',status:'canceled',customer:s.customer}];assert.equal((await send()).status,200);assert.equal(s.sessions.size,3);
+});
+test('single legacy checkout is adopted; duplicate/foreign ones block new sessions',async()=>{
+  const {s,send,legacy}=setup();s.sessions.set('cs_legacy',legacy());assert.equal((await send()).status,200);assert.equal(s.creates.length,0);s.sessions.set('cs_other',{...legacy(),id:'cs_other'});assert.equal((await send()).status,409);s.sessions.delete('cs_other');s.sessions.get('cs_legacy').client_reference_id='someone-else';assert.equal((await send()).status,409);assert.equal(s.expires.length,0);
+});
+test('old unresolved attempts stop before Stripe idempotency keys can expire',async()=>{
+  const {s,send}=setup();s.attempt={id:'old',startedAt:Date.now()-24*3600000,plan:'monthly',customerParams:{}};assert.equal((await send()).status,409);assert.equal(s.creates.length,0);assert.equal(s.customerCreates.length,0);
+});
+test('snapshot failure and Stripe outages cannot create sessions',async()=>{
+  const {s,send}=setup();s.failSnapshot=true;assert.equal((await send()).status,500);assert.equal(s.creates.length,0);s.failSnapshot=false;s.failList=true;assert.equal((await send()).status,500);assert.equal(s.creates.length,0);assert.equal(s.owner,null);
+});
+test('incomplete pagination fails closed',async()=>{
+  const {s,send}=setup();s.hasMore=true;s.subs=[{id:'sub_canceled',status:'canceled'}];assert.equal((await send()).status,503);assert.equal(s.busyReads,5);assert.equal(s.creates.length,0);
+});
+test('invalid body, plan mismatch and unauthenticated callers never create',async()=>{
+  const {s,send}=setup();for(const body of [null,[],{}, {plan:'monthly',price_id:prices.annual}])assert.equal((await send(body)).status,400);s.auth=false;assert.equal((await send()).status,401);assert.equal(s.owner,null);assert.equal(s.creates.length,0);
+});
+test('customer creation parameters persist before Stripe call',async()=>{
+  const {s,send}=setup();s.customer=null;assert.equal((await send()).status,200);assert.equal(s.customers.size,1);assert.equal(s.customer,s.creates[0].p.customer);assert.equal(s.customerCreates[0].p.email,'test@example.invalid');assert.ok(s.customerCreates[0].key.includes(s.attempt.id));
+});
+test('customer binding failure retries original customer parameters despite email change',async()=>{
+  const {s,send}=setup();s.customer=null;s.failCustomerBind=true;assert.equal((await send()).status,500);assert.equal(s.creates.length,0);s.failCustomerBind=false;s.email='updated@example.invalid';assert.equal((await send()).status,200);assert.equal(s.customers.size,1);assert.equal(s.customerCreates[0].key,s.customerCreates[1].key);assert.deepEqual(s.customerCreates[0].p,s.customerCreates[1].p);
+});
+test('expired lease cannot create a session or release a replacement owner',async()=>{
+  const {s,send}=setup();let release;s.listGate=new Promise(r=>release=r);const a=send();while(!s.busyReads)await new Promise(r=>setImmediate(r));s.owner='replacement-worker';release();assert.equal((await a).status,500);assert.equal(s.creates.length,0);assert.equal(s.owner,'replacement-worker');
+});
+test('supported price validation and existing paid entitlement are preserved',async()=>{
+  const {s,send}=setup();s.priceActive=false;assert.equal((await send()).status,503);s.priceActive=true;s.row.tier_source='stripe';s.row.tier_id='annual';assert.equal((await send()).status,409);assert.equal(s.creates.length,0);
+});
