@@ -10,7 +10,11 @@ const SUPABASE_URL = "https://upiadmvxzphegivqszvp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_iS9do7OPQuY-zEeAFfSrWQ_zA_IAObI";
 const DOWNLOAD_URL = "https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe";
 const RESEND_COOLDOWN_SECONDS = 30;
-const LEGAL_VERSION = "2026-09-29";
+const LEGAL_RELEASE = {
+  version: "2026-09-30.1",
+  terms_sha256: "3390697fbee06f6aec3b48b3dbf37366c7a7b31895d77a1007e12155d2b62eb7",
+  privacy_sha256: "fbef50b2959feef42de1cfa7ef920d4ecefbfeeca7d1e0972c3d8fa35124eac6",
+};
 
 const THEME_COLORS = {
   "Midnight Purple": { bg: "#08060f", accent: "#b57bff" },
@@ -300,7 +304,7 @@ el("su_submit").onclick = async () => {
   setBusy(el("su_submit"), true);
   const { data, error } = await supa.auth.signUp({
     email, password,
-    options: { data: { account_name, legal_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString() } },
+    options: { data: { account_name } },
   });
 
   if (error) {
@@ -368,6 +372,11 @@ async function startCheckout(tierKey) {
   hideMsg("upgradeMsg");
   if (tierKey !== "monthly" && tierKey !== "annual") {
     showMsg("upgradeMsg", "Unknown plan.", "error");
+    return;
+  }
+  if (!await refreshLegalState()) {
+    showMsg("upgradeMsg", "Confirm the current Terms above before starting a new purchase.", "error");
+    el("legalPanel").scrollIntoView({ block: "start", behavior: "auto" });
     return;
   }
   showMsg("upgradeMsg", "Redirecting to checkout...", "ok");
@@ -563,9 +572,10 @@ async function refreshSession(){
     };
   }
 
+  const hasLegalAcceptance = await refreshLegalState(uid);
   const params = PAGE_PARAMS;
   const desktopCallback = params.get("desktop_callback");
-  if (desktopCallback) {
+  if (desktopCallback && hasLegalAcceptance) {
     const desktopState = params.get("desktop_state");
     const handoffMode = params.get("desktop_handoff");
     const v2 = handoffMode === "post-v2";
@@ -624,7 +634,75 @@ async function refreshSession(){
   renderFeatures(effectiveEntitlement.tiers || {});
   renderThemeSwatches(effectiveEntitlement.tiers?.allowed_themes || ["Frost"], normalizedTheme);
   loadOwnReview(uid);
+  if (desktopCallback && !hasLegalAcceptance) {
+    showMsg("dashMsg", "Confirm the current Terms above to finish desktop sign-in. Billing management and account data remain available.", "warn");
+  }
 }
+
+// Server RPCs bind identity, document version and timestamp; editable Auth
+// metadata is never evidence of acceptance.
+async function refreshLegalState(expectedUserId) {
+  el("legalTerms").checked = false;
+  el("legalPrivacy").checked = false;
+  el("legalConfirmBtn").disabled = true;
+  el("legalControls").classList.remove("hidden");
+  try {
+    const { data: { user }, error: authError } = await supa.auth.getUser();
+    if (authError || !user) throw new Error("Sign in again to confirm the Terms.");
+    if (expectedUserId && user.id !== expectedUserId) throw new Error("Your signed-in account changed. Reload this page.");
+    const { data, error } = await supa.rpc("get_legal_acceptance_status");
+    if (error || !data) throw new Error("Could not check Terms confirmation. Retry in a moment.");
+    if (data.version !== LEGAL_RELEASE.version || data.terms_sha256 !== LEGAL_RELEASE.terms_sha256 ||
+        data.privacy_sha256 !== LEGAL_RELEASE.privacy_sha256) {
+      throw new Error("The legal documents changed. Reload this page before confirming.");
+    }
+    if (data.accepted === true && Number.isFinite(Date.parse(data.accepted_at))) {
+      el("legalControls").classList.add("hidden");
+      showMsg("legalMsg", "Version " + data.version + " confirmed on " + new Date(data.accepted_at).toLocaleString() + ".", "ok");
+      return true;
+    }
+    if (data.accepted !== false) throw new Error("Could not verify Terms confirmation.");
+    el("legalConfirmBtn").disabled = false;
+    showMsg("legalMsg", "Confirm version " + data.version + " before a new purchase or desktop sign-in.", "warn");
+  } catch (error) {
+    showMsg("legalMsg", error.message || "Could not check Terms confirmation.", "error");
+  }
+  return false;
+}
+
+async function confirmCurrentLegal() {
+  if (el("legalConfirmBtn").disabled) return;
+  if (!el("legalTerms").checked || !el("legalPrivacy").checked) {
+    showMsg("legalMsg", "Accept the Terms and acknowledge the Privacy Notice using both checkboxes.", "error");
+    return;
+  }
+  setBusy(el("legalConfirmBtn"), true);
+  let refreshed = false;
+  try {
+    const { data: { user }, error: authError } = await supa.auth.getUser();
+    if (authError || !user) throw new Error("Sign in again to confirm the Terms.");
+    const { data, error } = await supa.rpc("accept_current_legal", {
+      p_version: LEGAL_RELEASE.version,
+      p_terms_sha256: LEGAL_RELEASE.terms_sha256,
+      p_privacy_sha256: LEGAL_RELEASE.privacy_sha256,
+      p_accept_terms: true, p_ack_privacy: true,
+    });
+    if (error || data?.accepted !== true || data.version !== LEGAL_RELEASE.version ||
+        data.terms_sha256 !== LEGAL_RELEASE.terms_sha256 || data.privacy_sha256 !== LEGAL_RELEASE.privacy_sha256 ||
+        !Number.isFinite(Date.parse(data.accepted_at))) {
+      throw new Error("Confirmation could not be verified. Retry the status check; reload if the documents changed.");
+    }
+    await refreshSession();
+    refreshed = true;
+  } catch (error) {
+    showMsg("legalMsg", error.message || "Could not save confirmation.", "error");
+  } finally {
+    // Preserve the status refresh's fail-closed button state.
+    if (!refreshed) el("legalConfirmBtn").disabled = false;
+  }
+}
+el("legalConfirmBtn").onclick = confirmCurrentLegal;
+el("legalRetryBtn").onclick = refreshSession;
 
 function renderFeatures(tier){
   const rows = [
@@ -692,20 +770,22 @@ async function exportAccountData(){
       return;
     }
     const uid = user.id;
-    const [profileResult, entitlementResult, reviewResult] = await Promise.all([
+    const [profileResult, entitlementResult, reviewResult, legalResult] = await Promise.all([
       supa.from("profiles").select("id,account_name,created_at,preferred_theme").eq("id", uid).maybeSingle(),
       supa.from("entitlements").select("id,account_name,tier_id,tier_source,tier_expires_at,stripe_customer_id,stripe_subscription_id,stripe_subscription_status,preferred_theme,updated_at").eq("id", uid).maybeSingle(),
       supa.from("reviews").select("id,account_name,rating,body,created_at,updated_at").eq("id", uid).maybeSingle(),
+      supa.from("legal_acceptances").select("user_id,version,terms_sha256,privacy_sha256,accepted_at,source").eq("user_id", uid),
     ]);
-    if ([profileResult, entitlementResult, reviewResult].some(result => result.error)
+    if ([profileResult, entitlementResult, reviewResult, legalResult].some(result => result.error)
         || !profileResult.data || !entitlementResult.data
-        || [profileResult.data, entitlementResult.data, reviewResult.data].some(row => row && row.id !== uid)) {
+        || [profileResult.data, entitlementResult.data, reviewResult.data].some(row => row && row.id !== uid)
+        || !Array.isArray(legalResult.data) || legalResult.data.some(row => row.user_id !== uid)) {
       throw new Error("Account data could not be fully loaded");
     }
     // Select account fields explicitly; never serialize the SDK session/user
     // object wholesale, which can carry authentication/provider tokens.
     const payload = {
-      schema_version: 1, scope: "basic_account", exported_at: new Date().toISOString(),
+      schema_version: 2, scope: "basic_account", exported_at: new Date().toISOString(),
       account: {
         id: uid, email: user.email || null, phone: user.phone || null,
         created_at: user.created_at || null, updated_at: user.updated_at || null,
@@ -715,6 +795,7 @@ async function exportAccountData(){
         is_anonymous: user.is_anonymous === true, user_metadata: user.user_metadata || {},
       },
       profile: profileResult.data, entitlement: entitlementResult.data, review: reviewResult.data || null,
+      legal_acceptances: legalResult.data,
       note: "Basic export of your profile, entitlement, review and selected authentication fields, including user-provided metadata. It does not include payment-provider records, server logs, authentication/session tokens or desktop data. Payment-card data is handled by Stripe and is not stored by this website.",
     };
     const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
