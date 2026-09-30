@@ -167,6 +167,11 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Not authenticated" }, 401);
     }
     const user = userData.user;
+    // New purchases require independent server-controlled evidence. Metadata
+    // and client-supplied consent flags cannot authorize Checkout creation.
+    const { data: legal, error: legalError } = await supabaseAsUser.rpc("get_legal_acceptance_status");
+    if (legalError || !legal) return jsonResponse({ error: "Could not verify Terms confirmation. Try again later." }, 503);
+    if (legal.accepted !== true) return jsonResponse({ error: "Confirm the current Terms in your account before starting checkout." }, 403);
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
