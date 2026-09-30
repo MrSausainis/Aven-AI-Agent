@@ -195,10 +195,17 @@
         <div class="kv"><span>Valid until</span><span id="dashExpires">No fixed expiry</span></div>
         <button class="btn btn-secondary block" id="upgradeBtn" style="margin-top:16px;">Show upgrade options</button>
         <div id="upgradeOptions" class="hidden" style="margin-top:10px;display:grid;gap:8px;">
+          <fieldset id="purchaseConsent" disabled>
+            <legend>Start paid access</legend>
+            <p id="purchasePolicyStatus" role="status" aria-live="polite">Load the purchase request before choosing a plan.</p>
+            <label class="check-row" for="purchaseEarlyAccess"><input id="purchaseEarlyAccess" type="checkbox" /> <span id="purchaseRequestText"></span></label>
+            <label class="check-row" for="purchaseRightsNotice"><input id="purchaseRightsNotice" type="checkbox" /> <span id="purchaseRightsText"></span></label>
+            <p>Your request applies to the plan you choose below. Read <a href="refunds.html">Refunds &amp; withdrawal</a>.</p>
+          </fieldset>
           <button class="btn btn-primary block" id="upgradeMonthlyBtn">Monthly — €2 / month</button>
           <button class="btn btn-secondary block" id="upgradeAnnualBtn">Annual — €20 / year</button>
         </div>
-        <div class="msg" id="upgradeMsg"></div>
+        <div class="msg" id="upgradeMsg" role="status" aria-live="polite"></div>
       </div>
       <div class="panel">
         <h3>Billing</h3>

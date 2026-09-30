@@ -230,6 +230,7 @@ el("recovery_submit").onclick = async () => {
 };
 
 supa.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT" || event === "SIGNED_IN" || event === "USER_UPDATED") resetPurchaseConsent();
   if (event === "PASSWORD_RECOVERY") {
     showWrap("auth");
     el("loginForm").classList.add("hidden");
@@ -356,6 +357,7 @@ el("li_submit").onclick = async () => {
 };
 
 async function doLogout(){
+  resetPurchaseConsent();
   await supa.auth.signOut({ scope: "local" });
   showWrap("auth");
 }
@@ -364,33 +366,132 @@ el("brokenLogoutBtn").onclick = doLogout;
 
 el("downloadBtn").onclick = () => { window.location.href = DOWNLOAD_URL; };
 
-el("upgradeBtn").onclick = () => {
+// Purchase evidence is independent from general Terms and scoped to one account.
+let purchasePolicy = null;
+let purchaseGeneration = 0;
+let checkoutBusy = false;
+const purchaseIntentCache = new Map();
+function resetPurchaseConsent() {
+  purchaseGeneration++;
+  purchasePolicy = null;
+  el("purchaseEarlyAccess").checked = false;
+  el("purchaseRightsNotice").checked = false;
+  el("purchaseConsent").disabled = true;
+  el("purchaseRequestText").textContent = "";
+  el("purchaseRightsText").textContent = "";
+  el("purchasePolicyStatus").textContent = "Load the purchase request before choosing a plan.";
+}
+async function refreshPurchasePolicy(expectedUserId) {
+  const generation = purchaseGeneration;
+  const { data: { user }, error: authError } = await supa.auth.getUser();
+  if (authError || !user || (expectedUserId && user.id !== expectedUserId)) throw new Error("Your account changed. Reload before purchasing.");
+  const { data, error } = await supa.rpc("get_checkout_consent_policy");
+  if (generation !== purchaseGeneration) throw new Error("Your account changed. Reload before purchasing.");
+  if (error || !data || data.user_id !== user.id || data.legal_version !== LEGAL_RELEASE.version ||
+      data.rights_preserved !== true || typeof data.version !== "string" || !/^[0-9a-f]{64}$/.test(data.sha256) ||
+      typeof data.request_text !== "string" || !data.request_text || typeof data.rights_notice !== "string" || !data.rights_notice) {
+    throw new Error("Could not load the current purchase request. Try again later.");
+  }
+  if (!purchasePolicy || purchasePolicy.user_id !== data.user_id || purchasePolicy.version !== data.version || purchasePolicy.sha256 !== data.sha256) {
+    el("purchaseEarlyAccess").checked = false;
+    el("purchaseRightsNotice").checked = false;
+  }
+  purchasePolicy = data;
+  el("purchaseRequestText").textContent = data.request_text;
+  el("purchaseRightsText").textContent = "I acknowledge: " + data.rights_notice;
+  el("purchasePolicyStatus").textContent = "Confirm both statements for this purchase.";
+  el("purchaseConsent").disabled = false;
+  return data;
+}
+function purchaseCacheKey(policy, plan) { return "jysen-purchase:" + policy.user_id + ":" + plan; }
+function readPurchaseIntent(policy, plan) {
+  try {
+    const key = purchaseCacheKey(policy, plan);
+    const saved = purchaseIntentCache.get(key) || JSON.parse(sessionStorage.getItem(key));
+    if (saved && saved.policy === policy.version && saved.sha256 === policy.sha256 && saved.legal === policy.legal_version &&
+        /^[0-9a-f-]{36}$/i.test(saved.requestId) && Number.isFinite(saved.createdAt) && Date.now() - saved.createdAt < 23 * 3600000 && saved.createdAt <= Date.now()) return saved;
+  } catch {}
+  return { policy: policy.version, sha256: policy.sha256, legal: policy.legal_version, requestId: crypto.randomUUID(), createdAt: Date.now() };
+}
+function savePurchaseIntent(policy, plan, intent) {
+  purchaseIntentCache.set(purchaseCacheKey(policy, plan), intent);
+  try { sessionStorage.setItem(purchaseCacheKey(policy, plan), JSON.stringify(intent)); } catch {}
+}
+function clearPurchaseIntent(policy, plan) {
+  purchaseIntentCache.delete(purchaseCacheKey(policy, plan));
+  try { sessionStorage.removeItem(purchaseCacheKey(policy, plan)); } catch {}
+}
+el("upgradeBtn").onclick = async () => {
   el("upgradeOptions").classList.toggle("hidden");
+  if (el("upgradeOptions").classList.contains("hidden")) return;
+  try { await refreshPurchasePolicy(); }
+  catch (error) { resetPurchaseConsent(); showMsg("upgradeMsg", error.message, "error"); }
 };
 
 async function startCheckout(tierKey) {
+  if (checkoutBusy) return;
   hideMsg("upgradeMsg");
-  if (tierKey !== "monthly" && tierKey !== "annual") {
-    showMsg("upgradeMsg", "Unknown plan.", "error");
-    return;
-  }
-  if (!await refreshLegalState()) {
-    showMsg("upgradeMsg", "Confirm the current Terms above before starting a new purchase.", "error");
-    el("legalPanel").scrollIntoView({ block: "start", behavior: "auto" });
-    return;
-  }
-  showMsg("upgradeMsg", "Redirecting to checkout...", "ok");
-  const { data, error } = await supa.functions.invoke("create-checkout", {
-    body: { plan: tierKey },
-  });
-  if (error) {
-    showMsg("upgradeMsg", "Couldn't start checkout: " + error.message, "error");
-    return;
-  }
-  if (data && data.url) {
-    window.location.href = data.url;
-  } else {
-    showMsg("upgradeMsg", "Checkout didn't return a URL - try again in a moment.", "error");
+  if (tierKey !== "monthly" && tierKey !== "annual") { showMsg("upgradeMsg", "Unknown plan.", "error"); return; }
+  checkoutBusy = true;
+  el("upgradeMonthlyBtn").disabled = el("upgradeAnnualBtn").disabled = true;
+  const generation = purchaseGeneration;
+  try {
+    if (!await refreshLegalState(purchasePolicy?.user_id)) {
+      throw new Error("Confirm the current Terms above before starting a new purchase.");
+    }
+    const policy = await refreshPurchasePolicy(purchasePolicy?.user_id);
+    if (!el("purchaseEarlyAccess").checked || !el("purchaseRightsNotice").checked) {
+      throw new Error("Confirm the separate purchase request and rights notice using both checkboxes.");
+    }
+    el("purchaseConsent").disabled = true;
+    const intent = readPurchaseIntent(policy, tierKey);
+    // Keep the nonce even when a response is lost, so a retry cannot invent proof.
+    savePurchaseIntent(policy, tierKey, intent);
+    let consent;
+    if (intent.consentId) {
+      const result = await supa.rpc("get_checkout_consent", { p_consent_id: intent.consentId, p_plan: tierKey });
+      if (result.error?.code === "42501") {
+        clearPurchaseIntent(policy, tierKey);
+        throw new Error("Purchase confirmation expired or changed. Confirm a new request.");
+      }
+      if (result.error || !result.data) throw new Error("Could not verify the original purchase request. Try again later.");
+      consent = result.data;
+    } else {
+      const result = await supa.rpc("record_checkout_consent", {
+        p_plan: tierKey, p_policy_version: policy.version, p_policy_sha256: policy.sha256,
+        p_request_early_access: true, p_ack_rights_notice: true, p_request_id: intent.requestId,
+      });
+      if (result.error || !result.data) {
+        if (["42501", "22023"].includes(result.error?.code)) clearPurchaseIntent(policy, tierKey);
+        throw new Error("Could not record the purchase request. Reload if it changed, then try again.");
+      }
+      consent = result.data;
+    }
+    if (consent.user_id !== policy.user_id || consent.plan !== tierKey || consent.policy_version !== policy.version ||
+        consent.policy_sha256 !== policy.sha256 || consent.legal_version !== policy.legal_version ||
+        consent.rights_preserved !== true || !/^[0-9a-f-]{36}$/i.test(consent.id)) throw new Error("Purchase evidence changed. Reload before purchasing.");
+    savePurchaseIntent(policy, tierKey, { ...intent, consentId: consent.id });
+    if (generation !== purchaseGeneration || !el("purchaseEarlyAccess").checked || !el("purchaseRightsNotice").checked) throw new Error("Purchase confirmation changed. Try again.");
+    const { data: { user }, error: authError } = await supa.auth.getUser();
+    if (authError || user?.id !== policy.user_id || generation !== purchaseGeneration) throw new Error("Your account changed. Reload before purchasing.");
+    showMsg("upgradeMsg", "Preparing checkout...", "ok");
+    const { data, error } = await supa.functions.invoke("create-checkout", { body: { plan: tierKey, consent_id: consent.id } });
+    let failure = data;
+    if (error) { try { failure = await error.context.json(); } catch {} }
+    if (error || data?.error) {
+      if (failure?.code === "new_consent_required") clearPurchaseIntent(policy, tierKey);
+      throw new Error(failure?.error || "Could not start checkout. Retry the same plan in a moment.");
+    }
+    if (generation !== purchaseGeneration) throw new Error("Your account changed. Reload before purchasing.");
+    const target = new URL(data?.url);
+    if (target.protocol !== "https:" || target.hostname !== "checkout.stripe.com" || target.username || target.password || target.port) throw new Error("Invalid checkout URL.");
+    window.location.href = target.href;
+  } catch (error) {
+    showMsg("upgradeMsg", error.message || "Could not start checkout. Try again later.", "error");
+  } finally {
+    checkoutBusy = false;
+    el("upgradeMonthlyBtn").disabled = el("upgradeAnnualBtn").disabled = false;
+    el("purchaseConsent").disabled = !purchasePolicy;
   }
 }
 el("upgradeMonthlyBtn").onclick = () => startCheckout("monthly");

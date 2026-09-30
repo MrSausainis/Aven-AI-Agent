@@ -90,6 +90,13 @@ begin
   if p_policy_version is distinct from policy.version or p_policy_sha256 is distinct from policy.sha256 then
     raise exception 'Consent notice changed; reload before confirming' using errcode='22023';
   end if;
+  -- Serialize new intents per account; idempotent retries do not consume quota.
+  perform pg_advisory_xact_lock(hashtextextended(uid::text,21021));
+  if not exists(select 1 from public.checkout_consents where user_id=uid and request_id=p_request_id)
+      and (select count(*) from public.checkout_consents where user_id=uid
+        and requested_at>clock_timestamp()-interval '10 minutes')>=10 then
+    raise exception 'Too many purchase requests; wait before trying again' using errcode='54000';
+  end if;
   insert into public.checkout_consents(user_id,request_id,plan,price_id,policy_version,policy_sha256,
     request_text,rights_notice,legal_version,terms_sha256,privacy_sha256,requested_at,expires_at,source)
   values(uid,p_request_id,p_plan,price,policy.version,policy.sha256,policy.request_text,policy.rights_notice,
@@ -113,12 +120,22 @@ begin
   legal:=jysen_private.legal_status();
   select * into strict policy from jysen_private.checkout_consent_policies where is_current;
   select * into rec from public.checkout_consents where id=p_consent_id and user_id=auth.uid();
-  if rec.id is null or rec.plan is distinct from p_plan or rec.expires_at<=clock_timestamp()
+  if rec.id is null or rec.plan is distinct from p_plan
       or rec.policy_version is distinct from policy.version or rec.policy_sha256 is distinct from policy.sha256
       or rec.legal_version is distinct from legal->>'version' or legal->>'accepted' is distinct from 'true' then
     raise exception 'No current matching purchase consent' using errcode='42501';
   end if;
-  return to_jsonb(rec);
+  -- Expired intents may only recover the already-bound, still persisted attempt.
+  -- They can never authorize a replacement attempt or a new purchase.
+  if rec.expires_at<=clock_timestamp() and not exists(
+    select 1 from jysen_private.checkout_consent_bindings b
+    join public.checkout_attempts a on a.user_id=rec.user_id
+    where b.consent_id=rec.id and a.attempt->>'id'=b.attempt_id::text
+      and a.attempt->>'consentId'=rec.id::text and a.attempt->>'plan'=p_plan
+      and (a.attempt->>'startedAt')::numeric > extract(epoch from clock_timestamp()-interval '23 hours')*1000
+  ) then raise exception 'Purchase consent expired' using errcode='42501'; end if;
+  return to_jsonb(rec)||jsonb_build_object('bound_attempt_id',
+    (select attempt_id from jysen_private.checkout_consent_bindings where consent_id=rec.id));
 end $fn$;
 
 create function jysen_private.bind_checkout_consent(p_user_id uuid,p_token uuid,p_consent_id uuid,p_attempt_id uuid,p_plan text)

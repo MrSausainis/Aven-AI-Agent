@@ -58,7 +58,7 @@ begin
   assert rec->>'legal_version'=legal->>'version' and rec->>'terms_sha256'=legal->>'terms_sha256', 'Terms version frozen';
   assert rec->>'price_id'='price_1UCPzSJ78TGxjoZzD8Pc4ppZ', 'Price identity server-mapped';
   assert (rec->>'expires_at')::timestamptz>(rec->>'requested_at')::timestamptz, 'Bounded intent expiry';
-  assert public.get_checkout_consent((rec->>'id')::uuid,'monthly')=rec, 'Own exact plan can be validated';
+  assert public.get_checkout_consent((rec->>'id')::uuid,'monthly')=rec||jsonb_build_object('bound_attempt_id',null), 'Own exact plan can be validated';
   failed:=false;
   begin perform public.get_checkout_consent((rec->>'id')::uuid,'annual');
   exception when insufficient_privilege then failed:=true; end;
@@ -103,7 +103,8 @@ do $test$
 declare uid uuid:=auth.uid(); token uuid:=gen_random_uuid(); attempt uuid:=gen_random_uuid(); consent uuid:=current_setting('test.consent_id')::uuid;
 begin
   insert into public.checkout_attempts(user_id,lease_token,lease_expires_at,attempt)
-  values(uid,token,clock_timestamp()+interval '120 seconds',jsonb_build_object('id',attempt,'plan','monthly','consentId',consent));
+  values(uid,token,clock_timestamp()+interval '120 seconds',jsonb_build_object('id',attempt,'plan','monthly','consentId',consent,
+    'startedAt',extract(epoch from clock_timestamp())*1000));
   perform set_config('test.token',token::text,true);
   perform set_config('test.attempt',attempt::text,true);
 end $test$;
@@ -133,7 +134,70 @@ begin
   assert failed, 'Backend cannot rewrite user acknowledgement';
 end $test$;
 reset role;
+-- Rotation between recording and billing must invalidate the original evidence.
+insert into jysen_private.checkout_consent_policies(version,request_text,rights_notice,sha256,is_current)
+select 'test.rotated',request_text,rights_notice,sha256,false from jysen_private.checkout_consent_policies where is_current;
+update jysen_private.checkout_consent_policies set is_current=false where is_current;
+update jysen_private.checkout_consent_policies set is_current=true where version='test.rotated';
+set local role authenticated;
+do $test$
+declare failed boolean:=false;
+begin
+  begin perform public.get_checkout_consent(current_setting('test.consent_id')::uuid,'monthly');
+  exception when insufficient_privilege then failed:=true; end;
+  assert failed, 'Policy rotation invalidates previously recorded consent';
+end $test$;
+reset role;
+set local role service_role;
+do $test$
+declare failed boolean:=false;
+begin
+  begin perform public.bind_checkout_consent(current_setting('test.own_uid')::uuid,current_setting('test.token')::uuid,
+    current_setting('test.consent_id')::uuid,current_setting('test.attempt')::uuid,'monthly');
+  exception when insufficient_privilege then failed:=true; end;
+  assert failed, 'Policy rotation is rechecked at binding';
+end $test$;
+reset role;
+update jysen_private.checkout_consent_policies set is_current=false where version='test.rotated';
+update jysen_private.checkout_consent_policies set is_current=true where version='2026-10-01.early-access.1';
+delete from jysen_private.checkout_consent_policies where version='test.rotated';
+insert into jysen_private.legal_releases(version,terms_sha256,privacy_sha256,terms_html,privacy_html,is_current)
+select 'test.rotated',terms_sha256,privacy_sha256,terms_html,privacy_html,false from jysen_private.legal_releases where is_current;
+update jysen_private.legal_releases set is_current=false where is_current;
+update jysen_private.legal_releases set is_current=true where version='test.rotated';
+set local role authenticated;
+do $test$
+declare failed boolean:=false;
+begin
+  begin perform public.get_checkout_consent(current_setting('test.consent_id')::uuid,'monthly');
+  exception when insufficient_privilege then failed:=true; end;
+  assert failed, 'Legal release rotation invalidates previously recorded consent';
+end $test$;
+reset role;
+set local role service_role;
+do $test$
+declare failed boolean:=false;
+begin
+  begin perform public.bind_checkout_consent(current_setting('test.own_uid')::uuid,current_setting('test.token')::uuid,
+    current_setting('test.consent_id')::uuid,current_setting('test.attempt')::uuid,'monthly');
+  exception when insufficient_privilege then failed:=true; end;
+  assert failed, 'Legal release rotation is rechecked at binding';
+end $test$;
+reset role;
+update jysen_private.legal_releases set is_current=false where version='test.rotated';
+update jysen_private.legal_releases set is_current=true where version='2026-09-30.1';
+delete from jysen_private.legal_releases where version='test.rotated';
 -- New attempts cannot reuse evidence previously bound to another purchase.
+update public.checkout_consents set expires_at=clock_timestamp()-interval '1 second' where id=current_setting('test.consent_id')::uuid;
+set local role authenticated;
+do $test$
+declare receipt jsonb;
+begin
+  receipt:=public.get_checkout_consent(current_setting('test.consent_id')::uuid,'monthly');
+  assert receipt->>'bound_attempt_id'=current_setting('test.attempt'), 'Expired consent can recover only its original persisted attempt';
+end $test$;
+reset role;
+update public.checkout_consents set expires_at=clock_timestamp()+interval '30 minutes' where id=current_setting('test.consent_id')::uuid;
 update auth.users set email_confirmed_at=null where id=auth.uid();
 set local role service_role;
 do $test$
@@ -165,6 +229,22 @@ begin
   begin perform public.get_checkout_consent(current_setting('test.consent_id')::uuid,'monthly');
   exception when insufficient_privilege then failed:=true; end;
   assert failed, 'Expired intent refused';
+end $test$;
+reset role;
+set local role authenticated;
+do $test$
+declare policy jsonb; failed boolean:=false; receipt jsonb; last_nonce uuid;
+begin
+  policy:=public.get_checkout_consent_policy();
+  for i in 1..9 loop
+    last_nonce:=gen_random_uuid();
+    receipt:=public.record_checkout_consent('monthly',policy->>'version',policy->>'sha256',true,true,last_nonce);
+  end loop;
+  begin perform public.record_checkout_consent('monthly',policy->>'version',policy->>'sha256',true,true,gen_random_uuid());
+  exception when program_limit_exceeded then failed:=true; end;
+  assert failed, 'New purchase intents are limited per account';
+  assert public.record_checkout_consent('monthly',policy->>'version',policy->>'sha256',true,true,last_nonce)=receipt,
+    'Existing nonce retries remain available at the limit';
 end $test$;
 reset role;
 set local role anon;
