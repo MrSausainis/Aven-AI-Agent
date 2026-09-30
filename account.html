@@ -56,11 +56,11 @@
     <p class="sub" id="authSubtitle">Use it for plan access and synced account preferences.</p>
 
     <div class="tabs" role="tablist" aria-label="Account access">
-      <button type="button" class="tab active" id="tabSignup" role="tab" aria-selected="true">Sign up</button>
-      <button type="button" class="tab" id="tabLogin" role="tab" aria-selected="false">Log in</button>
+      <button type="button" class="tab active" id="tabSignup" role="tab" aria-selected="true" aria-controls="signupForm" tabindex="0">Sign up</button>
+      <button type="button" class="tab" id="tabLogin" role="tab" aria-selected="false" aria-controls="loginForm" tabindex="-1">Log in</button>
     </div>
 
-    <div id="signupForm">
+    <div id="signupForm" role="tabpanel" aria-labelledby="tabSignup" aria-hidden="false">
       <label for="su_name">Account name</label>
       <input id="su_name" type="text" autocomplete="username" placeholder="Choose a public account name" />
       <label for="su_email">Email</label>
@@ -72,7 +72,7 @@
       <button class="btn btn-secondary block hidden" id="su_resend" style="margin-top:9px;">Resend confirmation email</button>
     </div>
 
-    <div id="loginForm" class="hidden">
+    <div id="loginForm" class="hidden" role="tabpanel" aria-labelledby="tabLogin" aria-hidden="true">
       <label for="li_email">Email</label>
       <input id="li_email" type="email" autocomplete="email" placeholder="you@example.com" />
       <label for="li_pass">Password</label>

@@ -225,7 +225,7 @@ label{display:block;color:var(--muted);font-size:.75rem;margin:13px 0 6px}input,
   .support-option{display:block}.support-option .btn{margin-top:16px;width:100%}
 }
 
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.loader-ring{animation:none}.dash-section.active{animation:none}.btn{transition:none}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*::before,*::after{animation:none!important;transition:none!important}}
 .fade-in{animation:fadeUp .22s ease}
 
 /* Accessibility + trust/legal pages */
