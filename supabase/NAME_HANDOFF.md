@@ -1,0 +1,11 @@
+# Public account name policy (W26)
+
+Applied to project upiadmvxzphegivqszvp as migration 20260930161310_public_account_name_policy on 2026-09-30. Before applying, all three existing profiles already met the policy and no lowercase collisions existed; no historical names were changed.
+
+Names contain 1–32 Unicode letters, ASCII digits, ASCII spaces, dots, underscores or hyphens. The profile BEFORE trigger trims/collapses ASCII spaces and normalizes NFC. A CHECK prevents noncanonical storage and a unique lower(account_name) index rejects case variants. Signup reads the canonical profile name before creating the entitlement. Existing profile sync triggers propagate renamed names to entitlements. This does not implement a complete Unicode confusable detector, reserved brand registry or identity verification. PostgreSQL letter classification/lowercasing follows the database locale; server checks remain authoritative.
+
+enforce_account_name is SECURITY INVOKER with empty search_path, client EXECUTE revoked. handle_new_user retains its existing SECURITY DEFINER signup boundary, now with empty search_path and existing client ACLs. Synthetic authenticated SQL tests exercised signup, entitlement sync, atomic duplicate rejection, direct updates, NFC, length boundaries, Chinese letters and invalid/control/invisible characters, then rolled back. Three original users/profiles remained; security advisors added no warnings (existing leaked-password protection warning remains W08).
+
+Frontend signup and rename use the same NFC/ASCII-space normalization with Unicode code-point length and letter validation. HTML maxlength=64 allows 32 supplementary-plane letters; the helper enforces the actual 32-character bound. Run node --test scripts/account-name.test.cjs scripts/account-export.test.cjs and node scripts/build-site.test.mjs. SQL regression file is supabase/tests/account-name-policy.sql and is transactionally rolled back. Real browser signup, confirmation and rename acceptance remains part of the final live pass.
+
+Rollback: supabase/rollback/account-name-policy.sql restores the original captured signup function and removes the new trigger, CHECK and case-insensitive index. Coordinate a frontend rollback when deliberately reverting this policy. Build publishing uses the existing 19-file allowlist; SQL, tests and this handoff are excluded from the CDN.
