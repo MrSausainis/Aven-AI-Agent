@@ -69,3 +69,8 @@ Baseline rollback references: production website 5d02fd7c725d82dca2dba0bcee92ed7
 - Stripe subscription-filtered Checkout reads: https://docs.stripe.com/api/checkout/sessions/list.
 
 W21 source work is complete. Actual sender/trader configuration and live activation cannot be represented as completed without those real prerequisites; trader/tax readiness and W35 acceptance remain separate launch blockers.
+
+## Support/brand synchronization (2026-10-01)
+
+The draft includes the production Jysen AI presentation and private support contact from PR24, plus the updated operator guide from PR23. The original consent, confirmation, export and browser-storage behavior is retained. Current non-versioned Refund guidance includes the new support contact; the purchase contract continues to freeze the exact archived 2026-10-01.1 Refund document and its digest. Terms/Privacy public/archive bytes, legal-release SQL, functions and old acceptance records are unchanged by this UI synchronization. The current desktop app/installer/wake word is still AVEN, explained on Support. Commercial activation remains deferred and missing verified sender/trader configuration still blocks activation.
+

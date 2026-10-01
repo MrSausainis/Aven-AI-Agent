@@ -49,7 +49,7 @@ function canonicalPublicName(value) {
 const ACCOUNT_NAME_HINT = "Use 1–32 letters, digits, spaces, dots, underscores or hyphens.";
 
 if (DESKTOP_LOGIN_MODE) {
-  el("authTitle").textContent = "Connect AvenAI desktop";
+  el("authTitle").textContent = "Connect desktop (currently AVEN)";
   el("authSubtitle").textContent = "Log in here to create a separate secure desktop session.";
 }
 
@@ -820,7 +820,7 @@ function renderFeatures(tier){
     </div>`).join("");
 
   const noteText = {
-    all: "Every future paid feature is included permanently on this tier - no re-upgrade needed as AvenAI grows.",
+    all: "Every future paid feature is included permanently on this tier - no re-upgrade needed as Jysen AI grows.",
     subscription: "Every current and future paid feature is included for as long as your subscription stays active.",
     none: "New paid features added later aren't automatically included on this tier.",
   }[tier.future_updates] || "";
@@ -856,7 +856,7 @@ function renderThemeSwatches(allowedThemes, preferred){
         showMsg("themeMsg", error.message, "error");
         return;
       }
-      showMsg("themeMsg", "Saved - applies next time you open AvenAI", "ok");
+      showMsg("themeMsg", "Saved - applies next time you open Jysen AI", "ok");
     };
   });
 }
@@ -954,5 +954,6 @@ refreshSession();
   banner.textContent = "This page failed to start: " + fatalError.message +
     ". Reload the page; if it continues, use the project support link.";
   document.body.prepend(banner);
-  console.error("AvenAI account.html fatal init error:", fatalError);
+  console.error("Jysen AI account.html fatal init error:", fatalError);
 }
+

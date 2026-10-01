@@ -8,7 +8,7 @@ const output = join(root, "dist");
 // Only these reviewed public assets may reach Netlify's CDN. New pages/assets
 // require an explicit addition; backend source and documentation are excluded.
 const publicFiles = [
-  "index.html", "account.html", "donate.html", "404.html",
+  "index.html", "account.html", "donate.html", "404.html", "support.html",
   "privacy.html", "terms.html", "refunds.html", "cookies.html",
   "terms-2026-09-30.1.html", "privacy-2026-09-30.1.html",
   "terms-2026-10-01.1.html", "privacy-2026-10-01.1.html", "refunds-2026-10-01.1.html",
@@ -36,3 +36,4 @@ for (const relative of publicFiles) {
   copyFileSync(join(root, relative), destination);
 }
 console.log(`Built ${publicFiles.length} public website files in dist/`);
+
