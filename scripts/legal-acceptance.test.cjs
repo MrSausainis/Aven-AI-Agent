@@ -17,12 +17,12 @@ function setup() {
  vm.runInNewContext(releaseCode+'\nthis.release=LEGAL_RELEASE;',context);
  s.status={...context.release,accepted:false,accepted_at:null};
  vm.runInNewContext(source.slice(source.indexOf('async function refreshLegalState('),source.indexOf('function renderFeatures(')),context);
- vm.runInNewContext(source.slice(source.indexOf('async function startCheckout('),source.indexOf('async function openBillingPortal(')),context);
+ vm.runInNewContext(source.slice(source.indexOf('// Purchase evidence is independent'),source.indexOf('async function openBillingPortal(')),context);
  return {s,context,el};
 }
 test('pinned public document copies match the archived SQL bodies and frontend hashes',()=>{
  const {context}=setup();
- const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260930194220_legal_acceptance_ledger.sql'),'utf8');
+ const sql=fs.readFileSync(path.join(__dirname,'../supabase/proposals/purchase-legal-release.sql'),'utf8');
  for(const name of ['terms','privacy']) {
   const content=fs.readFileSync(path.join(__dirname,'../'+name+'-'+context.release.version+'.html'),'utf8');
   const tag='$'+name+'_archive$';
@@ -71,8 +71,8 @@ test('failed or changed confirmation does not navigate or report success; repeat
 });
 test('new checkout waits for ledger acceptance and fails closed on server status outage',async()=>{
  const {s,context}=setup();await context.startCheckout('monthly');assert.equal(s.invokes,0);
- s.status.accepted=true;s.status.accepted_at='2026-09-30T20:00:00Z';await context.startCheckout('annual');assert.equal(s.invokes,1);
- s.error={message:'offline'};await context.startCheckout('monthly');assert.equal(s.invokes,1);
+ s.status.accepted=true;s.status.accepted_at='2026-09-30T20:00:00Z';await context.startCheckout('annual');assert.equal(s.invokes,0);
+ s.error={message:'offline'};await context.startCheckout('monthly');assert.equal(s.invokes,0);
 });
 test('actual session renderer keeps billing/data dashboard available while gating desktop token handoff',async()=>{
  for(const accepted of [false,true]) {
@@ -92,3 +92,4 @@ test('actual session renderer keeps billing/data dashboard available while gatin
   if(!accepted)assert.equal(s.wrap,'dash');
  }
 });
+

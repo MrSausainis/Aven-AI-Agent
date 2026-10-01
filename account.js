@@ -11,9 +11,9 @@ const SUPABASE_ANON_KEY = "sb_publishable_iS9do7OPQuY-zEeAFfSrWQ_zA_IAObI";
 const DOWNLOAD_URL = "https://github.com/MrSausainis/Aven-AI-Agent/releases/latest/download/AVEN-Setup.exe";
 const RESEND_COOLDOWN_SECONDS = 30;
 const LEGAL_RELEASE = {
-  version: "2026-09-30.1",
-  terms_sha256: "3390697fbee06f6aec3b48b3dbf37366c7a7b31895d77a1007e12155d2b62eb7",
-  privacy_sha256: "fbef50b2959feef42de1cfa7ef920d4ecefbfeeca7d1e0972c3d8fa35124eac6",
+  version: "2026-10-01.1",
+  terms_sha256: "6182ba58728f5e01eb3e61dc1683c98332064d846280842013544d68ed265cb2",
+  privacy_sha256: "cb407f4a567bbe5fe5ba3bc4dee57ca7c27241951d6ed5320127a2282be6fb58",
 };
 
 const THEME_COLORS = {
@@ -230,6 +230,7 @@ el("recovery_submit").onclick = async () => {
 };
 
 supa.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT" || event === "SIGNED_IN" || event === "USER_UPDATED") resetPurchaseConsent();
   if (event === "PASSWORD_RECOVERY") {
     showWrap("auth");
     el("loginForm").classList.add("hidden");
@@ -356,6 +357,7 @@ el("li_submit").onclick = async () => {
 };
 
 async function doLogout(){
+  resetPurchaseConsent();
   await supa.auth.signOut({ scope: "local" });
   showWrap("auth");
 }
@@ -364,33 +366,132 @@ el("brokenLogoutBtn").onclick = doLogout;
 
 el("downloadBtn").onclick = () => { window.location.href = DOWNLOAD_URL; };
 
-el("upgradeBtn").onclick = () => {
+// Purchase evidence is independent from general Terms and scoped to one account.
+let purchasePolicy = null;
+let purchaseGeneration = 0;
+let checkoutBusy = false;
+const purchaseIntentCache = new Map();
+function resetPurchaseConsent() {
+  purchaseGeneration++;
+  purchasePolicy = null;
+  el("purchaseEarlyAccess").checked = false;
+  el("purchaseRightsNotice").checked = false;
+  el("purchaseConsent").disabled = true;
+  el("purchaseRequestText").textContent = "";
+  el("purchaseRightsText").textContent = "";
+  el("purchasePolicyStatus").textContent = "Load the purchase request before choosing a plan.";
+}
+async function refreshPurchasePolicy(expectedUserId) {
+  const generation = purchaseGeneration;
+  const { data: { user }, error: authError } = await supa.auth.getUser();
+  if (authError || !user || (expectedUserId && user.id !== expectedUserId)) throw new Error("Your account changed. Reload before purchasing.");
+  const { data, error } = await supa.rpc("get_checkout_consent_policy");
+  if (generation !== purchaseGeneration) throw new Error("Your account changed. Reload before purchasing.");
+  if (error || !data || data.user_id !== user.id || data.legal_version !== LEGAL_RELEASE.version ||
+      data.rights_preserved !== true || typeof data.version !== "string" || !/^[0-9a-f]{64}$/.test(data.sha256) ||
+      typeof data.request_text !== "string" || !data.request_text || typeof data.rights_notice !== "string" || !data.rights_notice) {
+    throw new Error("Could not load the current purchase request. Try again later.");
+  }
+  if (!purchasePolicy || purchasePolicy.user_id !== data.user_id || purchasePolicy.version !== data.version || purchasePolicy.sha256 !== data.sha256) {
+    el("purchaseEarlyAccess").checked = false;
+    el("purchaseRightsNotice").checked = false;
+  }
+  purchasePolicy = data;
+  el("purchaseRequestText").textContent = data.request_text;
+  el("purchaseRightsText").textContent = "I acknowledge: " + data.rights_notice;
+  el("purchasePolicyStatus").textContent = "Confirm both statements for this purchase.";
+  el("purchaseConsent").disabled = false;
+  return data;
+}
+function purchaseCacheKey(policy, plan) { return "jysen-purchase:" + policy.user_id + ":" + plan; }
+function readPurchaseIntent(policy, plan) {
+  try {
+    const key = purchaseCacheKey(policy, plan);
+    const saved = purchaseIntentCache.get(key) || JSON.parse(sessionStorage.getItem(key));
+    if (saved && saved.policy === policy.version && saved.sha256 === policy.sha256 && saved.legal === policy.legal_version &&
+        /^[0-9a-f-]{36}$/i.test(saved.requestId) && Number.isFinite(saved.createdAt) && Date.now() - saved.createdAt < 23 * 3600000 && saved.createdAt <= Date.now()) return saved;
+  } catch {}
+  return { policy: policy.version, sha256: policy.sha256, legal: policy.legal_version, requestId: crypto.randomUUID(), createdAt: Date.now() };
+}
+function savePurchaseIntent(policy, plan, intent) {
+  purchaseIntentCache.set(purchaseCacheKey(policy, plan), intent);
+  try { sessionStorage.setItem(purchaseCacheKey(policy, plan), JSON.stringify(intent)); } catch {}
+}
+function clearPurchaseIntent(policy, plan) {
+  purchaseIntentCache.delete(purchaseCacheKey(policy, plan));
+  try { sessionStorage.removeItem(purchaseCacheKey(policy, plan)); } catch {}
+}
+el("upgradeBtn").onclick = async () => {
   el("upgradeOptions").classList.toggle("hidden");
+  if (el("upgradeOptions").classList.contains("hidden")) return;
+  try { await refreshPurchasePolicy(); }
+  catch (error) { resetPurchaseConsent(); showMsg("upgradeMsg", error.message, "error"); }
 };
 
 async function startCheckout(tierKey) {
+  if (checkoutBusy) return;
   hideMsg("upgradeMsg");
-  if (tierKey !== "monthly" && tierKey !== "annual") {
-    showMsg("upgradeMsg", "Unknown plan.", "error");
-    return;
-  }
-  if (!await refreshLegalState()) {
-    showMsg("upgradeMsg", "Confirm the current Terms above before starting a new purchase.", "error");
-    el("legalPanel").scrollIntoView({ block: "start", behavior: "auto" });
-    return;
-  }
-  showMsg("upgradeMsg", "Redirecting to checkout...", "ok");
-  const { data, error } = await supa.functions.invoke("create-checkout", {
-    body: { plan: tierKey },
-  });
-  if (error) {
-    showMsg("upgradeMsg", "Couldn't start checkout: " + error.message, "error");
-    return;
-  }
-  if (data && data.url) {
-    window.location.href = data.url;
-  } else {
-    showMsg("upgradeMsg", "Checkout didn't return a URL - try again in a moment.", "error");
+  if (tierKey !== "monthly" && tierKey !== "annual") { showMsg("upgradeMsg", "Unknown plan.", "error"); return; }
+  checkoutBusy = true;
+  el("upgradeMonthlyBtn").disabled = el("upgradeAnnualBtn").disabled = true;
+  const generation = purchaseGeneration;
+  try {
+    if (!await refreshLegalState(purchasePolicy?.user_id)) {
+      throw new Error("Confirm the current Terms above before starting a new purchase.");
+    }
+    const policy = await refreshPurchasePolicy(purchasePolicy?.user_id);
+    if (!el("purchaseEarlyAccess").checked || !el("purchaseRightsNotice").checked) {
+      throw new Error("Confirm the separate purchase request and rights notice using both checkboxes.");
+    }
+    el("purchaseConsent").disabled = true;
+    const intent = readPurchaseIntent(policy, tierKey);
+    // Keep the nonce even when a response is lost, so a retry cannot invent proof.
+    savePurchaseIntent(policy, tierKey, intent);
+    let consent;
+    if (intent.consentId) {
+      const result = await supa.rpc("get_checkout_consent", { p_consent_id: intent.consentId, p_plan: tierKey });
+      if (result.error?.code === "42501") {
+        clearPurchaseIntent(policy, tierKey);
+        throw new Error("Purchase confirmation expired or changed. Confirm a new request.");
+      }
+      if (result.error || !result.data) throw new Error("Could not verify the original purchase request. Try again later.");
+      consent = result.data;
+    } else {
+      const result = await supa.rpc("record_checkout_consent", {
+        p_plan: tierKey, p_policy_version: policy.version, p_policy_sha256: policy.sha256,
+        p_request_early_access: true, p_ack_rights_notice: true, p_request_id: intent.requestId,
+      });
+      if (result.error || !result.data) {
+        if (["42501", "22023"].includes(result.error?.code)) clearPurchaseIntent(policy, tierKey);
+        throw new Error("Could not record the purchase request. Reload if it changed, then try again.");
+      }
+      consent = result.data;
+    }
+    if (consent.user_id !== policy.user_id || consent.plan !== tierKey || consent.policy_version !== policy.version ||
+        consent.policy_sha256 !== policy.sha256 || consent.legal_version !== policy.legal_version ||
+        consent.rights_preserved !== true || !/^[0-9a-f-]{36}$/i.test(consent.id)) throw new Error("Purchase evidence changed. Reload before purchasing.");
+    savePurchaseIntent(policy, tierKey, { ...intent, consentId: consent.id });
+    if (generation !== purchaseGeneration || !el("purchaseEarlyAccess").checked || !el("purchaseRightsNotice").checked) throw new Error("Purchase confirmation changed. Try again.");
+    const { data: { user }, error: authError } = await supa.auth.getUser();
+    if (authError || user?.id !== policy.user_id || generation !== purchaseGeneration) throw new Error("Your account changed. Reload before purchasing.");
+    showMsg("upgradeMsg", "Preparing checkout...", "ok");
+    const { data, error } = await supa.functions.invoke("create-checkout", { body: { plan: tierKey, consent_id: consent.id } });
+    let failure = data;
+    if (error) { try { failure = await error.context.json(); } catch {} }
+    if (error || data?.error) {
+      if (failure?.code === "new_consent_required") clearPurchaseIntent(policy, tierKey);
+      throw new Error(failure?.error || "Could not start checkout. Retry the same plan in a moment.");
+    }
+    if (generation !== purchaseGeneration) throw new Error("Your account changed. Reload before purchasing.");
+    const target = new URL(data?.url);
+    if (target.protocol !== "https:" || target.hostname !== "checkout.stripe.com" || target.username || target.password || target.port) throw new Error("Invalid checkout URL.");
+    window.location.href = target.href;
+  } catch (error) {
+    showMsg("upgradeMsg", error.message || "Could not start checkout. Try again later.", "error");
+  } finally {
+    checkoutBusy = false;
+    el("upgradeMonthlyBtn").disabled = el("upgradeAnnualBtn").disabled = false;
+    el("purchaseConsent").disabled = !purchasePolicy;
   }
 }
 el("upgradeMonthlyBtn").onclick = () => startCheckout("monthly");
@@ -623,7 +724,7 @@ async function refreshSession(){
 
   const checkoutState = params.get("checkout");
   if (checkoutState === "success") {
-    showMsg("dashMsg", "Checkout completed. Stripe may take a moment to refresh your plan access.", "ok");
+    showMsg("dashMsg", "Returned from Checkout. Payment and emailed confirmation are verified on the server before new paid access is activated. Save your confirmation below when it is available.", "ok");
   } else if (checkoutState === "cancelled") {
     showMsg("dashMsg", "Checkout was cancelled. Your current plan was not changed.", "warn");
   }
@@ -760,6 +861,26 @@ function renderThemeSwatches(allowedThemes, preferred){
   });
 }
 
+async function downloadPurchaseConfirmations() {
+  hideMsg('confirmationMsg');
+  setBusy(el('downloadConfirmationsBtn'),true,'Preparing...');
+  try {
+    const {data:{user},error:authError}=await supa.auth.getUser();
+    if(authError || !user)throw new Error('Sign in again to get your confirmations.');
+    const {data,error}=await supa.from('purchase_confirmations').select('id,user_id,session_id,payload_text,sha256,created_at').eq('user_id',user.id);
+    if(error || !Array.isArray(data) || data.some(row=>row.user_id!==user.id || typeof row.payload_text!=='string'))throw new Error('Could not load your confirmations.');
+    if(!data.length){showMsg('confirmationMsg','No paid purchase confirmation is available yet.','warn');return;}
+    const {data:{user:current},error:currentError}=await supa.auth.getUser();
+    if(currentError || current?.id!==user.id)throw new Error('Your account changed. Reload before downloading.');
+    const copy={schema_version:1,purchase_confirmations:data};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(copy,null,2)],{type:'application/json'}));
+    const a=document.createElement('a');a.href=url;a.download='aven-purchase-confirmations.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    showMsg('confirmationMsg','Your saved confirmation copies include the exact purchase wording and documents.','ok');
+  } catch(error){showMsg('confirmationMsg',error.message||'Could not download confirmations. Try again.','error');}
+  finally{setBusy(el('downloadConfirmationsBtn'),false,'Save purchase confirmations');}
+}
+el('downloadConfirmationsBtn').onclick=downloadPurchaseConfirmations;
+
 async function exportAccountData(){
   hideMsg("dataMsg");
   setBusy(el("exportDataBtn"), true, "Preparing...");
@@ -770,22 +891,26 @@ async function exportAccountData(){
       return;
     }
     const uid = user.id;
-    const [profileResult, entitlementResult, reviewResult, legalResult] = await Promise.all([
+    const [profileResult, entitlementResult, reviewResult, legalResult, consentResult, confirmationResult] = await Promise.all([
       supa.from("profiles").select("id,account_name,created_at,preferred_theme").eq("id", uid).maybeSingle(),
       supa.from("entitlements").select("id,account_name,tier_id,tier_source,tier_expires_at,stripe_customer_id,stripe_subscription_id,stripe_subscription_status,preferred_theme,updated_at").eq("id", uid).maybeSingle(),
       supa.from("reviews").select("id,account_name,rating,body,created_at,updated_at").eq("id", uid).maybeSingle(),
       supa.from("legal_acceptances").select("user_id,version,terms_sha256,privacy_sha256,accepted_at,source").eq("user_id", uid),
+      supa.from("checkout_consents").select("id,user_id,request_id,plan,price_id,policy_version,policy_sha256,request_text,rights_notice,legal_version,terms_sha256,privacy_sha256,requested_at,expires_at,source,rights_preserved").eq("user_id",uid),
+      supa.from("purchase_confirmations").select("id,user_id,consent_id,session_id,recipient_email,payload_text,sha256,created_at").eq("user_id",uid),
     ]);
-    if ([profileResult, entitlementResult, reviewResult, legalResult].some(result => result.error)
+    if ([profileResult, entitlementResult, reviewResult, legalResult, consentResult, confirmationResult].some(result => result.error)
         || !profileResult.data || !entitlementResult.data
         || [profileResult.data, entitlementResult.data, reviewResult.data].some(row => row && row.id !== uid)
-        || !Array.isArray(legalResult.data) || legalResult.data.some(row => row.user_id !== uid)) {
+        || [legalResult,consentResult,confirmationResult].some(result=>!Array.isArray(result.data)||result.data.some(row=>row.user_id!==uid))) {
       throw new Error("Account data could not be fully loaded");
     }
+    const {data:{user:currentUser},error:currentUserError}=await supa.auth.getUser();
+    if(currentUserError || currentUser?.id!==uid)throw new Error("Account changed before export");
     // Select account fields explicitly; never serialize the SDK session/user
     // object wholesale, which can carry authentication/provider tokens.
     const payload = {
-      schema_version: 2, scope: "basic_account", exported_at: new Date().toISOString(),
+      schema_version: 3, scope: "basic_account", exported_at: new Date().toISOString(),
       account: {
         id: uid, email: user.email || null, phone: user.phone || null,
         created_at: user.created_at || null, updated_at: user.updated_at || null,
@@ -796,7 +921,8 @@ async function exportAccountData(){
       },
       profile: profileResult.data, entitlement: entitlementResult.data, review: reviewResult.data || null,
       legal_acceptances: legalResult.data,
-      note: "Basic export of your profile, entitlement, review and selected authentication fields, including user-provided metadata. It does not include payment-provider records, server logs, authentication/session tokens or desktop data. Payment-card data is handled by Stripe and is not stored by this website.",
+      purchase_consents: consentResult.data, purchase_confirmations: confirmationResult.data,
+      note: "Basic export of your profile, entitlement, review, legal acceptances, purchase consent and saved confirmation records, and selected authentication fields, including user-provided metadata. It does not include payment-provider records, server logs, authentication/session tokens or desktop data. Payment-card data is handled by Stripe and is not stored by this website.",
     };
     const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="aven-account-data.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
