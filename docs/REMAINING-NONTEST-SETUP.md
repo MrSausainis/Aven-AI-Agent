@@ -60,10 +60,14 @@ Exact remaining public profile values: business_profile.name = Jysen AI; busines
 
 ## W32: latent quota field
 
-The desktop metadata draft PR2 already transports monthly_request_cap accurately (0/150/null). No hosted, operator-paid AI request endpoint or settled quota period/consumption policy has been identified. Ordinary BYOK calls must not consume an invented commercial quota; null is not zero.
+The desktop integration PR5 is merged into wip/2.1-clean-shutdown at aff73e9ce7d39ef06d32687e96d07d9a0b0ad3a7; it transports monthly_request_cap accurately (0/150/null). No hosted, operator-paid AI request endpoint or settled quota period/consumption policy has been identified. Ordinary BYOK calls must not consume an invented commercial quota; null is not zero.
 
 Before enforcement can be implemented, define the hosted billable operation and reset/accounting policy. A server quota RPC without a real hosted caller would not protect current BYOK traffic or close W32. Do not enable/promote the trial quota in the meantime. No speculative metering service was added.
 
 ## Excluded work
 
-W35 real Windows/OBS/account/billing acceptance remains outside this request. The previously started automated Windows run 36793793096 for desktop PR4 head 4fbcc197d901bdc796f691911cf832badd2162a7 finished successfully: full regressions, smoke, EXE payload and Inno installer compilation passed. This validates the CI-recovery candidate, not an integrated desktop release or real OBS/user acceptance. Desktop PR1/2/3/4 remain drafts. These operator files are outside the site's explicit publishing allowlist and must not be served as public assets.
+W35 real Windows/OBS/account/billing acceptance remains open. CI-recovery PR4 was merged at 112528256c503dd35ef2fbffd9c6996525ff50d5. Combined integration PR5 was merged at aff73e9ce7d39ef06d32687e96d07d9a0b0ad3a7 after Windows run 36800469170 passed for candidate ac99636e2a2a36bc597673ce14d9d1ec0bbe5371: compileall, undefined-name audit, full regressions, smoke, AVEN/Guardian EXEs, payload validation and Inno installer compilation. Exact-action file tests exercised production native Windows handles. Regression artifact 11135461888 has SHA256 d758eafa3d617874b4645f6f29d8e052f0f2dd5549da6d33bfbd4370dfee7a48. Standalone PR1/2/3 were closed as superseded; their OBS pin, quota metadata and W33 exact human-approved actions are preserved in PR5. No installer was published, app version changed, master promoted or real microphone/OBS/customer session performed.
+
+Website W21 draft PR22 was synchronized with support/brand production at head 55637fb5998c0ad723db2c30d56471eca45a1b23 (base 0107979fa26bb0a71afaa977b8a9a856ec407b4b); 97 source/mock checks passed. It remains a draft and is not activated: real seller/tax and verified transactional email configuration plus provider acceptance are missing/deferred. The live Supabase checkout/webhook functions were not replaced.
+
+These operator files are outside the site's explicit publishing allowlist and must not be served as public assets.
