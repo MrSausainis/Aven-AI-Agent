@@ -1,25 +1,19 @@
 # Remaining non-test setup
 
-Status: preparation only. No remaining audit point is closed by committing these files. Production branch 5d02fd7c725d82dca2dba0bcee92ed7759f46b05 remains unchanged. W21 source is in draft PR22; source completion does not mean live activation.
+Status updated 2026-10-01: W11 is closed after the owner applied active production protection. Private support and the Jysen AI website presentation are published through PR24, production commit 8a709f257f81b416c37000bf3898ade2fdc0800e. W21 source remains in draft PR22; source completion does not mean live activation. Commercial activation and registration are deferred by the owner.
 
 ## W11: production branch protection
 
-Current GitHub branch listing reports protected=false for wip/website-compliance-security and repository rulesets list is empty. ops/production-branch-ruleset.json is the exact proposed REST create-ruleset body: PR-only updates, squash merges, resolved review threads, blocked force-push/deletion, no bypass actors. Zero required approvals avoids requiring a second maintainer in this solo-maintained repository. It does not require invented status-check names; CI enforcement must be added only after identifying the actual working checks.
+The owner applied ruleset 24279878, Protect production website branch. Verified active: only refs/heads/wip/website-compliance-security, no bypass actors, deletion and force-push blocked, PR required, squash-only merge, resolved review threads, zero required approvals. W11 is closed. PR24 was published using an ordinary squash merge under this protection.
 
-Apply with an account holding Administration:write. The connected GitHub app cannot write administration settings; gh is unavailable in this workspace.
-
-```sh
-gh api --method POST repos/MrSausainis/Aven-AI-Agent/rulesets --input ops/production-branch-ruleset.json
-```
-
-Do not rerun the POST blindly: it creates a new ruleset. Record the returned ID and inspect it at repository Settings > Rules > Rulesets. Normal publication continues through PR merges; direct pushes to this production branch will be rejected. Roll back only the recorded ruleset ID through Settings if necessary. This preparation does not claim protection is enabled.
+ops/production-branch-ruleset.json remains the reviewed setup body. Do not POST it again: that would create duplicate rulesets. Administration access is not needed for normal authorized PR updates. Record and inspect the existing ruleset ID; rollback only that ID if deliberately required.
 
 Official API: https://docs.github.com/en/rest/repos/rules#create-a-repository-ruleset
 Settings: https://github.com/MrSausainis/Aven-AI-Agent/settings/rules
 
 ## W08: leaked-password protection
 
-Supabase documentation says this hosted feature requires Pro or above. The current project is Free. No subscription upgrade was purchased and no client-side password check is substituted for server enforcement. Enable through Auth settings only after the owner chooses the paid plan. The available connector cannot update Auth configuration.
+Supabase documentation says this hosted feature requires Pro or above. The current project is Free. No subscription upgrade was purchased and no client-side password check is substituted for server enforcement. The owner declined the paid feature for now; keep W08 deferred/open. Do not buy an upgrade or substitute a browser-only check for hosted Auth enforcement. The available connector cannot update Auth configuration.
 
 https://supabase.com/docs/guides/auth/password-security
 https://supabase.com/dashboard/project/upiadmvxzphegivqszvp/auth/providers
@@ -28,12 +22,12 @@ https://supabase.com/dashboard/project/upiadmvxzphegivqszvp/auth/providers
 
 Required non-secret operator facts:
 - actual legal seller name and geographic address;
-- seller country, private support email and telephone;
+- seller country and telephone; support_email is now jysenai.support@gmail.com;
 - registration/VAT identifiers only where applicable;
 - actual tax registration/regime applicable to the seller;
-- verified transactional sender address/domain.
+- verified transactional sender address/domain (the Gmail support contact does not verify a Resend sender).
 
-Jysen AI is the working product brand, not evidence of a legal seller identity or tax registration. Do not derive a business address/name from personal conversation memory.
+The owner has deferred registration and commercial launch. Jysen AI is the working product brand, not evidence of a legal seller identity or tax registration. Do not derive a business address/name from personal conversation memory.
 
 W21 expects PURCHASE_TRADER_JSON with legal_name, geographic_address, country, support_email and telephone; optional registration_id/vat_id. Set PURCHASE_CONFIRMATION_FROM to the verified sender. Set RESEND_API_KEY only through secure Supabase function-secret settings. Never paste a key into chat, Git or a public form. See draft PR22 docs/W21-checkout-consent.md for exact coordinated migrations/function/legal UI activation and retained evidence. Missing configuration fails closed before creating Stripe checkout/customer state.
 
@@ -56,7 +50,13 @@ Known annual Price: price_1UD87kJ78TGxjoZzyIHNEkQG.
 Existing support link: plink_1UD8DRJ78TGxjoZzE6ZWhmpy.
 Its return URL was already fixed to https://get-avenai.netlify.app/donate.html.
 
-Customer-facing website/desktop and billing still use AVEN. Prepare the rename together with the release rather than leaving different product names across active surfaces. No live billing rename is claimed in this preparation. Working-brand selection also does not constitute trademark clearance.
+The current website uses Jysen AI and explains that the existing Windows installer/app/wake word still use AVEN. Existing Terms/Privacy acceptance bytes and archive names are preserved.
+
+Verified live Stripe product names/descriptions now use Jysen AI Monthly, Jysen AI Annual and Support Jysen AI. Existing product/default Price IDs, tier metadata, tax codes, active flags and statement descriptors were verified unchanged. Monthly EUR 2 and annual EUR 20 remain intact. The support Payment Link keeps its existing ID and corrected Netlify return URL.
+
+The Stripe account public business_profile.name still uses Aven AI Agent, its website URL is the old GitHub Pages URL and support_email/support_url are empty. Account branding/contact writes are not exposed by the available connector. W19/W25 therefore remain partially open; product renaming alone does not complete all account/invoice branding. No account legal identity, verification details, statement descriptor, tax treatment or commercial activation was changed. Working-brand selection does not constitute trademark clearance.
+
+Exact remaining public profile values: business_profile.name = Jysen AI; business_profile.support_email = jysenai.support@gmail.com; business_profile.support_url = https://get-avenai.netlify.app/support.html; business_profile.url = https://get-avenai.netlify.app/. Do not apply these to the legal entity or account-login email fields.
 
 ## W32: latent quota field
 
@@ -66,4 +66,4 @@ Before enforcement can be implemented, define the hosted billable operation and 
 
 ## Excluded work
 
-W35 Windows build/installer/OBS/account/billing acceptance is deliberately left outside this request. Desktop PR1/2/3/4 remain drafts. These operator files are outside the site's explicit publishing allowlist and must not be served as public assets.
+W35 real Windows/OBS/account/billing acceptance remains outside this request. The previously started automated Windows run 36793793096 for desktop PR4 head 4fbcc197d901bdc796f691911cf832badd2162a7 finished successfully: full regressions, smoke, EXE payload and Inno installer compilation passed. This validates the CI-recovery candidate, not an integrated desktop release or real OBS/user acceptance. Desktop PR1/2/3/4 remain drafts. These operator files are outside the site's explicit publishing allowlist and must not be served as public assets.
