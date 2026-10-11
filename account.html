@@ -147,8 +147,8 @@
       <h2 id="legalTitle">Terms confirmation</h2>
       <p class="panel-lede">Confirm the documents for your account after email verification. We save the document version and confirmation time on the server. Billing management and account data remain available before confirmation.</p>
       <div id="legalControls">
-        <label class="check-row" for="legalTerms"><input type="checkbox" id="legalTerms" /><span>I agree to the <a href="terms-2026-09-30.1.html" target="_blank" rel="noopener">Terms, version 2026-09-30.1</a>.</span></label>
-        <label class="check-row" for="legalPrivacy"><input type="checkbox" id="legalPrivacy" /><span>I have read the <a href="privacy-2026-09-30.1.html" target="_blank" rel="noopener">Privacy Notice for this version</a>.</span></label>
+        <label class="check-row" for="legalTerms"><input type="checkbox" id="legalTerms" /><span>I agree to the <a href="terms-2026-10-01.1.html" target="_blank" rel="noopener">Terms, version 2026-10-01.1</a>.</span></label>
+        <label class="check-row" for="legalPrivacy"><input type="checkbox" id="legalPrivacy" /><span>I have read the <a href="privacy-2026-10-01.1.html" target="_blank" rel="noopener">Privacy Notice for this version</a>.</span></label>
         <button type="button" class="btn btn-primary" id="legalConfirmBtn" disabled>Save confirmation</button>
       </div>
       <button type="button" class="btn btn-quiet" id="legalRetryBtn">Check confirmation again</button>
@@ -195,10 +195,17 @@
         <div class="kv"><span>Valid until</span><span id="dashExpires">No fixed expiry</span></div>
         <button class="btn btn-secondary block" id="upgradeBtn" style="margin-top:16px;">Show upgrade options</button>
         <div id="upgradeOptions" class="hidden" style="margin-top:10px;display:grid;gap:8px;">
+          <fieldset id="purchaseConsent" disabled>
+            <legend>Start paid access</legend>
+            <p id="purchasePolicyStatus" role="status" aria-live="polite">Load the purchase request before choosing a plan.</p>
+            <label class="check-row" for="purchaseEarlyAccess"><input id="purchaseEarlyAccess" type="checkbox" /> <span id="purchaseRequestText"></span></label>
+            <label class="check-row" for="purchaseRightsNotice"><input id="purchaseRightsNotice" type="checkbox" /> <span id="purchaseRightsText"></span></label>
+            <p>Your request applies to the plan you choose below. Read <a href="refunds.html">Refunds &amp; withdrawal</a>.</p>
+          </fieldset>
           <button class="btn btn-primary block" id="upgradeMonthlyBtn">Monthly — €2 / month</button>
           <button class="btn btn-secondary block" id="upgradeAnnualBtn">Annual — €20 / year</button>
         </div>
-        <div class="msg" id="upgradeMsg"></div>
+        <div class="msg" id="upgradeMsg" role="status" aria-live="polite"></div>
       </div>
       <div class="panel">
         <h3>Billing</h3>
@@ -206,6 +213,9 @@
         <p class="panel-lede">Manage an existing Stripe subscription, payment method or invoice history. Cancelling renewal keeps access through the current billing period. Free and manually granted plans do not have a Stripe subscription to cancel.</p>
         <button class="btn btn-secondary" id="billingManageBtn">Manage billing</button>
         <div class="msg" id="billingMsg" role="status" aria-live="polite"></div>
+        <p class="panel-lede">A paid purchase confirmation is emailed with the exact Terms, Privacy and Refund documents before new paid access is activated. You can keep another copy here. Requesting immediate access does not waive applicable withdrawal or refund rights.</p>
+        <button class="btn btn-secondary" id="downloadConfirmationsBtn">Save purchase confirmations</button>
+        <div class="msg" id="confirmationMsg" role="status" aria-live="polite"></div>
       </div>
     </section>
 
