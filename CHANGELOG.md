@@ -3,6 +3,121 @@
 All notable changes to Jysen AI (previously A.V.E.N.). Downloads are on the
 [releases page](https://github.com/MrSausainis/Aven-AI-Agent/releases).
 
+## [2.2.0] - 2026-10-13
+
+A big one. Answers now appear right on the Dynamic Island, Jysen can act on your PC when you ask it in plain words, Settings opens as its own window, the chat gets the tools you know from other chat apps, resizing is several times smoother, and the last pieces of the old A.V.E.N. name are gone.
+
+### ✨ New
+
+#### Answers on the Dynamic Island
+- **See the answer without opening Jysen.** The island grows down into a card with Jysen's last answer, so you can read it while Jysen's window is in the background. Long answers scroll with the mouse wheel.
+- **On hover (default):** rest the mouse on the island for a moment to open the last answer, and move away to close it. **Open by itself** shows each answer as it arrives. **Off** turns it off. Choose in Settings → Dynamic Island → Answers on the island.
+- **Copy what you need.** Drag to select text, then Ctrl+C or right-click → Copy selection. Copy answer copies all of it.
+- **Click the card** (or right-click → Open in Jysen) to open Jysen at that message.
+- **Sources.** Answers from a web search show their sources at the bottom of the card; click one to open it in your browser.
+- The card never opens over a game by itself.
+
+#### Jysen's AI can use Jysen
+- **Ask in your own words, and it happens.** "Can you resume Spotify?", "open Discord and play some Queen", "set a timer for ten minutes" now work even when they are phrased as a question or combine several actions. The AI runs Jysen's own commands for you.
+- **The same safety rules apply.** The AI goes through the exact path a typed command does: your permission mode, the confirmation before closing an app and the refusal to shut down the PC all still apply. Some things only you can ask for, never the AI on its own: shutting down, restarting or signing out, deleting history, notes or files, and uninstalling.
+- **It no longer pretends.** Before, the AI could reply "Resumed Spotify" without doing anything. Now it only says something happened when it really did.
+- Each request carries only the hints that matter for it (music, apps, timers…), so answers stay fast.
+- **Ask how your PC is doing.** "What are my PC's stats?" now gets a real answer: the AI measures CPU, RAM, GPU and Windows version with Jysen's diagnostics. Before, it said it had no way to check.
+- **Misheard names.** Speech-to-text sometimes gets names wrong. The AI now reads a misheard name as the closest real one ("damiana david" is Damiano David), looks it up when it is not sure, and does not invent facts about people.
+
+#### A better chat window
+- **Edit a message where it is.** Right-click one of your messages and choose **Edit message**. It opens in place: Enter sends, Esc cancels. Everything after that message is replaced by the new answer, like in other chat apps. The saved history and the AI's memory of the chat are trimmed the same way.
+- **Text size:** Ctrl + / Ctrl − / Ctrl 0, from 10 to 24 pt.
+- **Drafts per chat.** Unsent text stays with the chat you typed it in.
+- **Export a chat** to a text file from the chat list menu.
+- **Find in chat:** Ctrl+F. Every match is highlighted, and Enter / Shift+Enter move between them.
+- **Rounded menus.** Right-click menus and Settings dropdowns are now rounded with a thin dark edge, in the app's theme, instead of the square Windows ones. They close like normal menus: choose an item, press Esc, or click anywhere else.
+
+#### Dynamic Island
+- **Include the artist** no longer keeps the artist on screen all the time. It shows for 3–5 seconds when a song starts (longer names a little longer), then hides. Switching the setting on shows it once more. A song already shown is not shown again. Rest the mouse on the island for about a second to see it again.
+
+#### CPU and RAM alerts
+- **No more alerts for short spikes.** The island warns about high CPU or RAM use only after it has lasted about 5 seconds. If you show CPU use all the time, it simply turns red instead of opening a separate alert.
+
+#### CS2 match timer
+- **Just the time**, see-through like the island over a game. The score is gone, since CS2 shows it already.
+- **The bomb.** When it is planted, the timer opens up with the seconds until it explodes (blinking for the last 10), then the defuse countdown while someone defuses, then "Defused" or "Exploded" for a moment.
+- **A thin line** shows the round's time left: buy time in your theme's colour, amber for the last 10 seconds. The bomb's line drains red, a defuse fills in green.
+- The countdowns come straight from CS2. Restart CS2 once after updating so it picks up the new settings Jysen writes for it.
+
+#### Settings
+- **Settings opens as its own window** in the middle of Jysen, like in the Claude app, instead of a side panel. Prefer the panel? Switch back in Settings → General → Settings opens as.
+- **Shorter texts.** Each setting is explained in one sentence. Credits and licences moved to the end of System.
+- **Search finds settings by name.** Type a setting's own name, such as "include artist", "start minimized" or "push to talk works", and Settings opens that page and scrolls straight to it. Close spellings work too ("microfone", "transparancy").
+- **Easier to scan.** A setting's name is now larger and bold, and its explanation stays small.
+- **Default hotkeys.** If both were empty, Stop speaking is set to Ctrl+Alt+S and Show Jysen to Ctrl+Alt+J. You can change or clear them in Settings.
+- **Voice log for an hour** (Advanced → Logs) records what Jysen heard and whether it counted as the wake word, to trace a wake you did not expect. It switches itself off after an hour.
+
+#### Jysen everywhere
+- The app is now **Jysen.exe** and its watchdog **JysenGuardian.exe**.
+- The sidebar shows the Jysen logo, in your theme's colours, instead of a plain "J".
+- New installs go to `Programs\Jysen AI`, and your data lives in `%LOCALAPPDATA%\Jysen`.
+- See **Updating from A.V.E.N. / 2.1.0** below for what happens to an existing install.
+
+### 🐛 Bug fixes
+
+#### Voice
+- **Jysen woke up on its own while you talked to friends.** Words one letter away from its name, such as "Tyson", "risen" or "Dyson", counted as the wake word anywhere in the first four words. Now a near-miss only counts at the start of a sentence (after "hey", "ok" or "um" at most) and must start with the same sound as "Jysen". Saying "Jysen" clearly still works, even a few words in.
+- Each time Jysen wakes, the voice log now records which word woke it (only that word, never the sentence), so any future false wake can be traced.
+- **Push to talk cut Jysen's answer short as soon as the key was pressed**, even when held by accident. Now Jysen stops only when you actually start talking. Its own voice coming back through the microphone is no longer taken as a command either.
+- **A quick push-to-talk command was lost.** Pressing the key, saying "pause" and letting go at once ended the listening before the words had arrived. Jysen now waits a moment after you let go for words still on their way.
+- **Push to talk right after starting Jysen** seemed to do nothing while the microphone was still starting. The island now says "Mic starting", and what you say still counts once it is ready.
+- **The natural voice only loaded after the first answer**, so that answer always used the Windows voice. It now loads by itself a few seconds after Jysen starts (or as soon as you start typing).
+- **The Windows voice answered after Jysen had been open a long time.** The natural voice was unloaded when idle and the first answer after that used the fallback. It now stays loaded and is only unloaded when the PC is short on memory.
+- **"How are you, Jysen?" with push to talk** lost everything before the name when the name came last. The whole sentence now counts.
+
+#### Commands
+- **"Never mind, can you resume it" was not understood** as a music command after "pause Spotify" and went to the AI instead. Phrases that start with "never mind", "ok" and similar, followed by "can you…", are now recognised.
+- **"Play the previous song"** searched Spotify for a song called "the previous song". It now goes back a track, like "previous song" did.
+- **"How are you doing today?"** ran the full system diagnostics because of the word "doing". Now it is small talk again.
+
+#### AI
+- **The AI described things it could not check**, such as "your internet is working great", and asked "what would you like me to try?" after you had already agreed to its offer. It now says plainly when it cannot check something, and does what it offered once you say yes.
+- **The AI was told every user had a ROG Strix G15 laptop**, a line left from development. Removed: it now checks the real PC when asked.
+- **Background voices became "preferences".** Game voice chat heard as one long message was saved in the user profile as something you "hate". Jysen now only learns a short, clear preference, such as "I prefer short answers".
+- **A command window flashed** on screen during some answers, from a GPU check. Fixed.
+- **Diagnostics said Windows 10** on Windows 11. Fixed.
+
+#### Window and Settings
+- **An edited message lost its spacing** and stuck to the message above it. Fixed.
+- **The right side of the header jumped** left for a moment when the sidebar was opened or closed. Fixed.
+- **Resizing the window lagged**, badly with Settings open (up to more than a second per step). Windows repainted the whole window at every step of a drag. Now only what changed is redrawn, as Chromium-based browsers do. Measured per step:
+
+  | | Before | After |
+  |---|---|---|
+  | Empty chat | ~88 ms | ~37 ms |
+  | Long chat | ~125 ms | ~53 ms |
+  | With Settings open | ~435 ms | ~53 ms |
+
+  Layout work and saving the window size now wait until you let go of the edge.
+- **Searching Settings for "hotkey"** opened Voice & Audio at the top, with the hotkey card far below. It now scrolls straight to the card. "Push to talk", "shortcut" and "keybind" do the same.
+
+#### Now Playing
+- **Lighter on Windows' media service.** Jysen asked Windows' "Now Playing" service for a brand-new connection up to five times a second, and kept asking when the service stopped answering. It now keeps one connection and waits longer between tries while the service is not answering. (If Task Manager shows "Service Host: Local Service – NPSMSvc" using a lot of CPU, restarting that service or the PC clears it.)
+
+#### Logs
+- **The error log filled up while the PC was locked**: every Now Playing check failed and was logged, about 2000 lines an hour. A failing check is now logged once, and once more when it works again.
+- The CS2 match timer now writes one line to the log whenever the reason it is shown or hidden changes, so a timer that does not appear can be traced.
+
+### ⬆️ Updating from A.V.E.N. / 2.1.0
+**Check for updates** in A.V.E.N. 2.0.0 and Jysen 2.1.0 finds this update. Your settings, keys, memory, chats, notes and downloaded models all carry over. Nothing is downloaded again.
+
+- **Program folder.** If Jysen was installed in the default `Programs\AVEN` folder, the update installs into `Programs\Jysen AI` and removes the old folder, which only ever held program files. If you chose your own folder, it stays where it is.
+- **Your data.** On first start, `%LOCALAPPDATA%\AVEN` is renamed to `%LOCALAPPDATA%\Jysen` and its files from `aven_…` to `jysen_…`. It is a rename, not a copy, so it is instant even with large local models. If something is holding a file at that moment, Jysen keeps using the old location and finishes the move on a later start. Nothing is overwritten or lost.
+- **Shortcuts.** Start menu and desktop shortcuts are recreated with the Jysen icon. The old "A.V.E.N" Start menu folder is replaced by "Jysen AI". "Launch with Windows" is pointed at the new program automatically. A taskbar pin made for the old AVEN.exe needs to be pinned again.
+- **The natural voice** keeps working after the move: Jysen re-points its model files to the new folder by itself.
+- **The taskbar icon** now always shows the Jysen mark. Before, a window started from an old shortcut could show a stale Python icon.
+- Going back to 2.1.0 after updating would start with empty settings, because 2.1.0 looks in the old folder. Your data is still safe in `%LOCALAPPDATA%\Jysen`.
+
+### ⚠️ Known limitations
+- Hotkeys are read with standard Windows key state, which games running as administrator may block.
+- The AI acts through Jysen's commands. It cannot click around in other apps.
+
 ## [2.1.0] - 2026-10-12
 
 The first update after 2.0.0. A.V.E.N. is now **Jysen**, with a new look and new voice controls, a much better chat window, and a long list of fixes.
